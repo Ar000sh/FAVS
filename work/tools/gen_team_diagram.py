@@ -111,6 +111,14 @@ def container(cid, parent, x, y, w, h, title, fill, stroke, dashed=False):
     box[cid] = (px + x, py + y, w, h)
 
 
+def note(cid, parent, x, y, w, h, text):
+    style = ("shape=note;whiteSpace=wrap;html=1;size=14;align=left;verticalAlign=top;spacingLeft=8;spacingTop=4;"
+             "spacingRight=8;fontSize=11;fillColor=#FFFDF2;strokeColor=#B8A77A;")
+    cells.append(f'<mxCell id="{cid}" value="{html.escape(text, quote=True)}" style="{style}" vertex="1" parent="{parent}">'
+                 f'<mxGeometry x="{x}" y="{y}" width="{w}" height="{h}" as="geometry"/></mxCell>')
+    box[cid] = (box[parent][0] + x, box[parent][1] + y, w, h)
+
+
 def cls(name, parent, x, y):
     kind, attrs, methods = C[name]
     fill, stroke, extra = STY[kind]
@@ -221,8 +229,18 @@ cells[i] = cells[i].replace('width="10" height="10"', f'width="{ae_w}" height="{
 RC = 20 + ae_w + 60                                  # right column of the Expense context
 gmw, gmh = cls("GroupMembershipView", "E", RC, 100)
 cls("ExpenseDomainEvents", "E", RC, 100 + gmh + 70)
-e_w = RC + max(gmw, size("ExpenseDomainEvents")[0]) + 30
-e_h = max(50 + ae_h, 100 + gmh + 70 + size("ExpenseDomainEvents")[1]) + 30
+edw, edh = size("ExpenseDomainEvents")
+# note on the 17.10 decision, below the events box and right of the line that enters it from below
+NX, NY, NW, NH = RC + edw // 2 + 30, 100 + gmh + 70 + edh + 40, 300, 140
+note("noteView", "E", NX, NY, NW, NH,
+     "<b>Decision 17.10: GroupMembershipView</b><br/>"
+     "What: Expense keeps a local copy of the group (open?, members, admins), updated from GroupDomainEvents, "
+     "and gets it passed into record / correct / remove.<br/>"
+     "Why: Expense only knows the groupId but must enforce R2/R3 (payer and participants are members), "
+     "R5 (no changes when closed) and R6 (recorder, payer or admin). Same pattern as Membership.hasZeroBalance "
+     "(DDD slide 67, rule 4: eventual consistency).")
+e_w = max(RC + max(gmw, edw), NX + NW) + 30
+e_h = max(50 + ae_h, NY + NH) + 30
 i = [k for k, c in enumerate(cells) if 'id="E"' in c][0]
 cells[i] = cells[i].replace('width="10" height="10"', f'width="{e_w}" height="{e_h}"'); box["E"] = (E0[0], E0[1], e_w, e_h)
 
