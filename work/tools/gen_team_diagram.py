@@ -80,6 +80,15 @@ C = {
               ["+ add(Money): Money", "+ subtract(Money): Money", "+ negate(): Money", "+ isPositive(): boolean",
                "+ isZero(): boolean"]),
     "GroupId": ("vo", ["+ value: UUID"], []),
+    # simple value objects instead of primitive types (DDD slide 66; GroupName listed on slide 68)
+    "GroupName": ("vo", ["+ value: String"], []),
+    "Email": ("vo", ["+ value: String"], []),
+    "InvitationId": ("vo", ["+ value: UUID"], []),
+    "ExpenseId": ("vo", ["+ value: UUID"], []),
+    "ExpenseTitle": ("vo", ["+ value: String"], []),
+    "EntryId": ("vo", ["+ value: UUID"], []),
+    "SettlementPaymentId": ("vo", ["+ value: UUID"], []),
+    "Currency": ("vo", ["+ code: String"], []),
     "UserId": ("vo", ["+ value: UUID"], []),
 }
 
@@ -198,8 +207,12 @@ cls("MembershipStatus", "AG", 20, r3)
 cls("GroupRole", "AG", 20 + msw + 30, r3)
 isw, _ = size("InvitationStatus")
 cls("InvitationStatus", "AG", int(center_under("Invitation", isw) - box["AG"][0]), r3)
-ag_w = max(20 + gw, 20 + mw + GAP + sw + GAP + iw) + 20
-ag_h = r3 + max(msh, size("InvitationStatus")[1]) + 30
+r4 = r3 + max(msh, size("InvitationStatus")[1]) + 60
+x = 20
+for nm in ("GroupName", "Email", "InvitationId"):
+    w, _ = cls(nm, "AG", x, r4); x += w + 40
+ag_w = max(20 + gw, 20 + mw + GAP + sw + GAP + iw, x - 40) + 20
+ag_h = r4 + max(size(nm)[1] for nm in ("GroupName", "Email", "InvitationId")) + 30
 cells[[i for i, c in enumerate(cells) if 'id="AG"' in c][0]] = cells[[i for i, c in enumerate(cells) if 'id="AG"' in c][0]].replace('width="10" height="10"', f'width="{ag_w}" height="{ag_h}"')
 box["AG"] = (box["AG"][0], box["AG"][1], ag_w, ag_h)
 gdw, gdh = cls("GroupDomainEvents", "G", 20 + ag_w + 60, 100)
@@ -235,8 +248,13 @@ r2 = 50 + xh + ROWGAP
 x = 20
 for nm in ("ExpenseShare", "ExpenseRevision", "SplitStrategy", "ExpenseStatus"):
     w, _ = cls(nm, "AE", x, r2); x += w + 40
-ae_w = max(20 + xw, x - 40) + 20
-ae_h = r2 + max(size(nm)[1] for nm in ("ExpenseShare", "ExpenseRevision", "SplitStrategy", "ExpenseStatus")) + 30
+row2_w = x - 40
+r3 = r2 + max(size(nm)[1] for nm in ("ExpenseShare", "ExpenseRevision", "SplitStrategy", "ExpenseStatus")) + 60
+x = 20
+for nm in ("ExpenseId", "ExpenseTitle"):
+    w, _ = cls(nm, "AE", x, r3); x += w + 40
+ae_w = max(20 + xw, row2_w, x - 40) + 20
+ae_h = r3 + max(size(nm)[1] for nm in ("ExpenseId", "ExpenseTitle")) + 30
 i = [k for k, c in enumerate(cells) if 'id="AE"' in c][0]
 cells[i] = cells[i].replace('width="10" height="10"', f'width="{ae_w}" height="{ae_h}"'); box["AE"] = (box["AE"][0], box["AE"][1], ae_w, ae_h)
 RC = 20 + ae_w + 60                                  # right column of the Expense context
@@ -281,7 +299,10 @@ lew, leh = size("LedgerEntry")
 cls("LedgerEntry", "AL", int(20 + (lw - lew) / 2), 50 + lh + ROWGAP)
 ltw, lth = size("LedgerEntryType")
 cls("LedgerEntryType", "AL", int(20 + (lw - ltw) / 2), 50 + lh + ROWGAP + leh + ROWGAP)
-al_w, al_h = lw + 40, 50 + lh + ROWGAP + leh + ROWGAP + lth + 30
+eiw, eih = size("EntryId")
+y_ei = 50 + lh + ROWGAP + leh + ROWGAP + lth + 60
+cls("EntryId", "AL", int(20 + (lw - eiw) / 2), y_ei)
+al_w, al_h = lw + 40, y_ei + eih + 30
 i = [k for k, c in enumerate(cells) if 'id="AL"' in c][0]
 cells[i] = cells[i].replace('width="10" height="10"', f'width="{al_w}" height="{al_h}"'); box["AL"] = (box["AL"][0], box["AL"][1], al_w, al_h)
 
@@ -299,7 +320,10 @@ container("AP", "S", AP_X, 50, 10, 10, "«Aggregate» SettlementPayment · 1 tra
 pw, ph = cls("SettlementPayment", "AP", 20, 50)
 psw, psh = size("PaymentStatus")
 cls("PaymentStatus", "AP", int(20 + (pw - psw) / 2), 50 + ph + ROWGAP)
-ap_w, ap_h = pw + 40, 50 + ph + ROWGAP + psh + 30
+spiw, spih = size("SettlementPaymentId")
+y_spi = 50 + ph + ROWGAP + psh + 60
+cls("SettlementPaymentId", "AP", int(20 + (pw - spiw) / 2), y_spi)
+ap_w, ap_h = pw + 40, y_spi + spih + 30
 i = [k for k, c in enumerate(cells) if 'id="AP"' in c][0]
 cells[i] = cells[i].replace('width="10" height="10"', f'width="{ap_w}" height="{ap_h}"'); box["AP"] = (box["AP"][0], box["AP"][1], ap_w, ap_h)
 s_w = AP_X + ap_w + 30
@@ -333,10 +357,14 @@ mw_, mh_ = cls("Money", "K", 30, 60)
 cls("GroupId", "K", 30 + mw_ + 40, 60)
 gidw, gidh = size("GroupId")
 cls("UserId", "K", 30 + mw_ + 40, 60 + gidh + 40)
+cw_, ch_ = size("Currency")
+cls("Currency", "K", int(30 + (mw_ - cw_) / 2), 60 + mh_ + ROWGAP)
 k_w = 30 + mw_ + 40 + max(gidw, size("UserId")[0]) + 30
-k_h = 60 + max(mh_, gidh + 40 + size("UserId")[1]) + 30
+k_h = 60 + max(mh_ + ROWGAP + ch_, gidh + 40 + size("UserId")[1]) + 30
 i = [k for k, c in enumerate(cells) if 'id="K"' in c][0]
 cells[i] = cells[i].replace('width="10" height="10"', f'width="{k_w}" height="{k_h}"'); box["K"] = (K0[0], K0[1], k_w, k_h)
+
+comp("Currency", "Money")
 
 # ================================================================== cross-context edges
 M = box["Money"]; GI = box["GroupId"]; UI = box["UserId"]; X = box["Expense"]; EDE = box["ExpenseDomainEvents"]

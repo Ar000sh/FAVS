@@ -14,6 +14,18 @@ Team original: `work/archive/firstdraft_ORIGINAL_team_import.drawio`.
   - New on Group: `declineInvitation(InvitationId): InvitationDeclined`.
   - Invitation keeps `accept()` / `decline()`, but they now only change its status and no longer return events.
   - Before, `Invitation.accept()` returned `MemberJoined`, but it could not create the Membership, and Group had no method for joining.
+- **Value objects for all types the model uses** (decided 17.10). Before, the model used these types but never defined them. Each is now a small «Value Object» box:
+  - in the Group aggregate: `GroupName`, `Email`, `InvitationId`
+  - in the Expense aggregate: `ExpenseId`, `ExpenseTitle`
+  - in the GroupLedger aggregate: `EntryId`
+  - in the SettlementPayment aggregate: `SettlementPaymentId`
+  - in the shared kernel: `Currency`, as part of Money
+
+  Slides:
+  - **DDD slide 66**: "Use Value Objects instead of primitive types", with a code example that uses `EmailAddress`, `PhoneNumber` and so on instead of String.
+  - **slide 68**: lists `GroupName` explicitly as a ShareWise value object, next to Money, ExpenseShare and Percentage.
+  - **slide 64**: Money = `BigDecimal amount` + `Currency currency`.
+  - **slide 65**: what a value object is (no identity, immutable, equal by its values).
 - Presentation only: a dashed box per aggregate, colours by type, `name: Type` notation, `List<…>` generics.
 
 ## To decide together
@@ -32,10 +44,10 @@ Team original: `work/archive/firstdraft_ORIGINAL_team_import.drawio`.
      - **(c)** Keep it as is and expect a question about it in P1.
 4. **Small items:**
    - `createGroup()` has no parameters (name, currency, creator?).
-   - Expense has no `date`.
-   - These types are used but never defined: ExpenseTitle, GroupName, Currency, Email, the IDs.
 
 ## Decided, no action
+- **No `date` on Expense.** It isn't on the slides: slide 64 gives Expense exactly id, groupId, paidBy, amount, splitStrategy, status.
+- **Currency stays** (Group.currency, Money.currency, slide 64). We only dropped multi-currency and an extra currency check.
 - **LedgerEntry stays an «Entity».** It is immutable, but each booking is its own fact that we need to refer to (audit, reversals). Slide 66 says entities are *often* mutable, not always.
 - **No currency check.** One currency per group is our own simplification. The slides only have Money with Currency (slide 64).
 
