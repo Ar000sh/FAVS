@@ -155,6 +155,8 @@
   ul.check li.x::before { content: "✗"; color: var(--bad); }
   ul.check li.snapshot::before { content: "◑"; color: var(--warn); }
   ul.cmd li::before { content: "▸"; position: absolute; left: 4px; top: 0; color: var(--event); }
+  .agg-head .chip { white-space: normal; }
+  ul.check code, ul.cmd code, .card code, .note code { overflow-wrap: anywhere; }
   .rule { font: 600 12px/1.5 var(--f-mono); color: var(--quiet); white-space: nowrap; }
   .note { border-left: 3px solid var(--line); padding: 2px 0 2px 12px; color: var(--quiet); font-size: 14px; }
 
@@ -253,10 +255,10 @@
         <text x="660" y="102" text-anchor="middle" class="ref">UserId</text>
 
         <!-- Group to Expense / Settlement -->
-        <path d="M420 216 V341" class="l-ev" marker-end="url(#f1-ev)"/>
+        
         <text x="410" y="262" text-anchor="end" class="ms ev">MemberJoined / Left / Removed / Promoted</text>
         <text x="410" y="278" text-anchor="end" class="ms ev">GroupClosed / Reopened / Archived</text>
-        <path d="M600 216 V341" class="l-ev" marker-end="url(#f1-ev)"/>
+        
         <text x="592" y="262" text-anchor="end" class="ms ev">MemberJoined</text>
         <text x="592" y="278" text-anchor="end" class="ms ev">GroupClosed / Reopened</text>
         <path d="M620 190 H690 V341" class="l-q" marker-end="url(#f1-q)"/>
@@ -284,7 +286,7 @@
         <text x="334" y="427" class="ms">members · admins</text>
         <path d="M318 398 H254" class="l-q" marker-end="url(#f1-q)"/>
         <text x="286" y="390" text-anchor="middle" class="ref">passed in</text>
-        <path d="M250 488 H556" class="l-ev" marker-end="url(#f1-ev)"/>
+        
         <text x="404" y="480" text-anchor="middle" class="ms ev">ExpenseRecorded / Corrected / Removed</text>
 
         <!-- Settlement context -->
@@ -317,7 +319,10 @@
         <rect x="20" y="566" width="960" height="58" rx="12" class="band-plain"/>
         <text x="500" y="591" text-anchor="middle" class="cap">ACTIVITY (READ MODEL) · NOTIFICATION (GENERIC)</text>
         <text x="500" y="611" text-anchor="middle" class="q">subscribe to every event in this picture and only listen (Conformist, context map #6 and #7)</text>
-      </svg>
+        <path d="M420 216 V341" class="l-ev" marker-end="url(#f1-ev)"/>
+  <path d="M600 216 V341" class="l-ev" marker-end="url(#f1-ev)"/>
+  <path d="M250 488 H556" class="l-ev" marker-end="url(#f1-ev)"/>
+</svg>
     </div>
     <div class="legend" aria-hidden="true">
       <span><svg viewBox="0 0 34 12"><path d="M2 6 H28" class="l-ev"/><path d="M26 2 L32 6 L26 10 z" class="mk-ev"/></svg>domain event, handled in its own transaction</span>
