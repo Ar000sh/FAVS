@@ -26,6 +26,8 @@ Team original: `work/archive/firstdraft_ORIGINAL_team_import.drawio`.
   - **slide 68**: lists `GroupName` explicitly as a ShareWise value object, next to Money, ExpenseShare and Percentage.
   - **slide 64**: Money = `BigDecimal amount` + `Currency currency`.
   - **slide 65**: what a value object is (no identity, immutable, equal by its values).
+- **Money without methods** (decided 17.10). The team version had add / subtract / negate / isPositive / isZero. Money now only has `amount: BigDecimal` and `currency: Currency`, as on DDD slide 64. The arithmetic belongs in the code, not in the domain diagram.
+- **`createGroup(GroupName name, Currency currency, UserId creator): GroupCreated`** (decided 17.10). Before, it had no parameters. The creator becomes the first admin (J2).
 - Presentation only: a dashed box per aggregate, colours by type, `name: Type` notation, `List<…>` generics.
 
 ## To decide together
@@ -42,8 +44,6 @@ Team original: `work/archive/firstdraft_ORIGINAL_team_import.drawio`.
      - **(a)** Drop it for the MVP: remove `waive()`, `WAIVED`, `DebtWaived`, `appendDebtWaiver()` and `DEBT_WAIVED`.
      - **(b)** Keep it as a ledger command, e.g. `GroupLedger.waiveDebt(debtor, creditor, amount): DebtWaived`, plus a new rule in the requirements.
      - **(c)** Keep it as is and expect a question about it in P1.
-4. **Small items:**
-   - `createGroup()` has no parameters (name, currency, creator?).
 
 ## Decided, no action
 - **No `date` on Expense.** It isn't on the slides: slide 64 gives Expense exactly id, groupId, paidBy, amount, splitStrategy, status.

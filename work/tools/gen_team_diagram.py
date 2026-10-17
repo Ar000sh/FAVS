@@ -12,7 +12,7 @@ OUT = os.path.join(os.path.dirname(__file__), "..", "ShareWise_Domain_Model.draw
 C = {
     # Group context (supporting)
     "Group": ("root", ["+ id: GroupId", "+ name: GroupName", "+ currency: Currency", "+ status: GroupStatus"],
-              ["+ createGroup(): GroupCreated",
+              ["+ createGroup(GroupName name, Currency currency, UserId creator): GroupCreated",
                "+ inviteMember(Email, UserId adminOrMember): MemberInvited",
                "+ promoteToAdmin(UserId targetMember, UserId actingAdmin): MemberPromoted",
                "+ removeMember(UserId targetMember, UserId actingAdmin): MemberRemoved",
@@ -76,9 +76,7 @@ C = {
                                           "SettlementPaymentRejected", "DebtWaived",
                                           "MemberBalanceStatusChanged", "AllBalancesSettled"], []),
     # Shared kernel
-    "Money": ("vo", ["+ amount: BigDecimal", "+ currency: Currency"],
-              ["+ add(Money): Money", "+ subtract(Money): Money", "+ negate(): Money", "+ isPositive(): boolean",
-               "+ isZero(): boolean"]),
+    "Money": ("vo", ["+ amount: BigDecimal", "+ currency: Currency"], []),
     "GroupId": ("vo", ["+ value: UUID"], []),
     # simple value objects instead of primitive types (DDD slide 66; GroupName listed on slide 68)
     "GroupName": ("vo", ["+ value: String"], []),
