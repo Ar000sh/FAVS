@@ -1,0 +1,441 @@
+<title>ShareWise Building Blocks</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+  /* Layout: one-screen app. A toolbar on top, below it a pan/zoom board (contexts as columns, one table per aggregate) or a flat master table.
+     Colours follow the Ex2/Ex3 visuals: blue = core, ochre = supporting, green-grey = generic, orange = domain event. */
+  :root {
+    --bg: #f4f5f2; --panel: #ffffff; --ink: #1a1d1f; --quiet: #5d6368; --line: #cdd1cb; --soft: #e7e9e4; --board: #eceee9;
+    --core: #2a63c6; --core-tint: #e8eefa; --sup: #86681a; --sup-tint: #f4eddb; --gen: #55675a; --gen-tint: #e7ede8;
+    --event: #c0410d; --event-tint: #fcece1; --vo: #4f5b8a; --vo-tint: #eceef8; --bad: #b3342c; --hit: #fff1a8;
+    --f-display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+    --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --f-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #131517; --panel: #1b1e21; --ink: #e8eaeb; --quiet: #a0a6ab; --line: #41464b; --soft: #272b2f; --board: #101214;
+      --core: #84aaf3; --core-tint: #1b2639; --sup: #d7b55e; --sup-tint: #30281a; --gen: #a5b9a8; --gen-tint: #212924;
+      --event: #ff9459; --event-tint: #362116; --vo: #aab4e8; --vo-tint: #23263a; --bad: #ff7b72; --hit: #4a4214;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #131517; --panel: #1b1e21; --ink: #e8eaeb; --quiet: #a0a6ab; --line: #41464b; --soft: #272b2f; --board: #101214;
+    --core: #84aaf3; --core-tint: #1b2639; --sup: #d7b55e; --sup-tint: #30281a; --gen: #a5b9a8; --gen-tint: #212924;
+    --event: #ff9459; --event-tint: #362116; --vo: #aab4e8; --vo-tint: #23263a; --bad: #ff7b72; --hit: #4a4214;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 var(--f-body); display: flex; flex-direction: column; overflow: hidden; }
+  button, input { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--core); outline-offset: 2px; }
+
+  /* toolbar */
+  .top { flex: none; border-bottom: 1px solid var(--line); background: var(--bg); padding-block: 10px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+  .top h1 { margin: 0; font: 700 20px/1.1 var(--f-display); white-space: nowrap; }
+  .top .sub { color: var(--quiet); font-size: 12.5px; }
+  .group { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+  .btn { border: 1px solid var(--line); background: var(--panel); border-radius: 7px; padding: 4px 10px; cursor: pointer; font-size: 13px; min-height: 32px; }
+  .btn:hover { background: var(--soft); }
+  .btn[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .zoomval { font: 500 12.5px/1 var(--f-mono); min-width: 46px; text-align: center; font-variant-numeric: tabular-nums; }
+  .search { border: 1px solid var(--line); background: var(--panel); border-radius: 7px; padding: 4px 10px; min-height: 32px; width: 200px; max-width: 100%; }
+  .chipbtn { border: 1px solid var(--line); border-radius: 99px; padding: 2px 10px; background: var(--panel); cursor: pointer; font-size: 12.5px; min-height: 28px; display: inline-flex; gap: 6px; align-items: center; }
+  .chipbtn[aria-pressed="false"] { opacity: 0.45; text-decoration: line-through; }
+  .hint { color: var(--quiet); font-size: 12px; }
+  #kinds { flex-wrap: nowrap; overflow-x: auto; max-width: 100%; scrollbar-width: thin; padding-bottom: 2px; }
+  #kinds .chipbtn { flex: none; }
+
+  /* board */
+  .stage { flex: 1; min-height: 0; position: relative; overflow: hidden; background: var(--board); touch-action: none; cursor: grab; }
+  .stage.drag { cursor: grabbing; user-select: none; }
+  .board { position: absolute; left: 0; top: 0; transform-origin: 0 0; width: 3000px; padding: 40px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 36px; align-items: start; }
+  .board .span { grid-column: 1 / -1; }
+  .head { display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: end; }
+  .head h2 { margin: 0; font: 700 44px/1.05 var(--f-display); }
+  .head p { margin: 6px 0 0; color: var(--quiet); font-size: 16px; max-width: 80ch; }
+  .facts { display: flex; gap: 26px; }
+  .facts div { display: grid; }
+  .facts b { font: 700 34px/1 var(--f-display); font-variant-numeric: tabular-nums; }
+  .facts span { color: var(--quiet); font-size: 13px; }
+  .col { display: grid; gap: 26px; align-content: start; min-width: 0; }
+  .ctx { border-radius: 14px; padding: 14px 18px; display: grid; gap: 2px; border: 1px solid; }
+  .ctx h3 { margin: 0; font: 700 26px/1.1 var(--f-display); }
+  .ctx .meta { font: 600 12px/1.4 var(--f-mono); letter-spacing: 0.06em; text-transform: uppercase; }
+  .ctx p { margin: 4px 0 0; font-size: 14px; color: var(--quiet); }
+  .k-core { background: var(--core-tint); border-color: var(--core); } .k-core .meta { color: var(--core); }
+  .k-sup { background: var(--sup-tint); border-color: var(--sup); } .k-sup .meta { color: var(--sup); }
+  .k-gen { background: var(--gen-tint); border-color: var(--gen); } .k-gen .meta { color: var(--gen); }
+
+  /* aggregate table */
+  .agg { background: var(--panel); border: 2px solid var(--ink); border-radius: 12px; overflow: hidden; }
+  .agg.loose { border: 1.5px dashed var(--quiet); }
+  .agg-h { padding: 12px 14px; display: grid; gap: 6px; border-bottom: 1px solid var(--line); }
+  .agg-h .st { font: italic 12px/1.2 var(--f-body); color: var(--quiet); }
+  .agg-h h4 { margin: 0; font: 600 22px/1.15 var(--f-mono); }
+  .agg-h .line { font-size: 13px; color: var(--quiet); }
+  .agg-h .line b { color: var(--ink); font-weight: 600; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--soft); vertical-align: top; }
+  thead th { font: 600 11px/1.3 var(--f-body); letter-spacing: 0.05em; text-transform: uppercase; color: var(--quiet); background: var(--panel); border-bottom: 1px solid var(--line); }
+  tbody tr:last-child td { border-bottom: 0; }
+  td.nm { font: 600 13px/1.4 var(--f-mono); white-space: nowrap; }
+  td.holds { font: 12px/1.5 var(--f-mono); color: var(--ink); }
+  td.why { color: var(--ink); }
+  td.rules { font: 600 11.5px/1.5 var(--f-mono); color: var(--quiet); white-space: nowrap; }
+  tr.r-root td { background: var(--soft); }
+  tr.r-rej td { color: var(--quiet); }
+  tr.r-rej td.nm { text-decoration: line-through; text-decoration-color: var(--bad); }
+  tr.dim td { opacity: 0.22; }
+  tr.hit td { background: var(--hit) !important; }
+  .kind { display: inline-block; font: 600 11px/1.5 var(--f-body); padding: 1px 8px; border-radius: 99px; white-space: nowrap; border: 1px solid transparent; }
+  .kd-root { background: var(--ink); color: var(--bg); }
+  .kd-entity { border-color: var(--ink); color: var(--ink); }
+  .kd-vo { background: var(--vo-tint); color: var(--vo); }
+  .kd-id { background: var(--soft); color: var(--quiet); }
+  .kd-snap { border: 1px dashed var(--quiet); color: var(--quiet); }
+  .kd-rej { border: 1px solid var(--bad); color: var(--bad); }
+  .kd-ext { background: var(--gen-tint); color: var(--gen); }
+  .cmds { border-top: 1px solid var(--line); padding: 10px 14px 12px; display: grid; gap: 4px; font-size: 12.5px; }
+  .cmds .lbl { font: 600 11px/1.3 var(--f-body); letter-spacing: 0.05em; text-transform: uppercase; color: var(--quiet); }
+  .cmds code { font: 12px/1.5 var(--f-mono); }
+  .ev { color: var(--event); font-family: var(--f-mono); font-size: 12px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; font-size: 13px; color: var(--quiet); }
+  .legend span { display: inline-flex; gap: 6px; align-items: center; }
+
+  /* flat table view */
+  .flat { flex: 1; min-height: 0; overflow: auto; padding-block: 16px 40px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .flat .box { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow-x: auto; }
+  .flat table { min-width: 980px; font-size: 13.5px; }
+  .flat thead th { position: sticky; top: 0; z-index: 1; }
+  tr.grp td { background: var(--soft); font: 600 12px/1.4 var(--f-body); letter-spacing: 0.04em; text-transform: uppercase; color: var(--quiet); }
+  .flat tr.hidden { display: none; }
+  .empty { padding: 24px; color: var(--quiet); }
+  @media (max-width: 560px) { .hint { display: none; } .top h1 { font-size: 18px; } }
+</style>
+
+<div class="top">
+  <div>
+    <h1>ShareWise Building Blocks</h1>
+    <div class="sub">Ex3 · entities, value objects, aggregates · draft 17.10.26</div>
+  </div>
+  <div class="group" role="group" aria-label="View">
+    <button class="btn" id="v-board" aria-pressed="true">Board</button>
+    <button class="btn" id="v-table" aria-pressed="false">One table</button>
+  </div>
+  <div class="group" id="zoomctl" role="group" aria-label="Zoom">
+    <button class="btn" id="z-out" aria-label="Zoom out">−</button>
+    <span class="zoomval" id="z-val">100%</span>
+    <button class="btn" id="z-in" aria-label="Zoom in">+</button>
+    <button class="btn" id="z-fit">Fit</button>
+    <button class="btn" id="z-one">100%</button>
+  </div>
+  <input class="search" id="q" type="search" placeholder="Search, e.g. Money or R11" aria-label="Search building blocks">
+  <div class="group" id="kinds" role="group" aria-label="Show kinds"></div>
+  <span class="hint" id="hint">Wheel or pinch to zoom · drag to move · Enter jumps to the first match</span>
+</div>
+
+<div class="stage" id="stage"><div class="board" id="board"></div></div>
+<div class="flat" id="flat" hidden></div>
+
+<script>
+(function () {
+  var KINDS = {
+    root:   { label: "Aggregate root (entity)", cls: "kd-root" },
+    entity: { label: "Entity inside", cls: "kd-entity" },
+    vo:     { label: "Value object", cls: "kd-vo" },
+    id:     { label: "Typed ID", cls: "kd-id" },
+    snap:   { label: "Snapshot (VO)", cls: "kd-snap" },
+    ext:    { label: "Not ours", cls: "kd-ext" },
+    rej:    { label: "Rejected", cls: "kd-rej" }
+  };
+
+  // [kind, name, holds, why this kind / what it guards, rules]
+  var CONTEXTS = [
+    { name: "Group context", type: "Supporting", arch: "Layered (slide 76)", cls: "k-sup",
+      note: "Membership and lifecycle. Its rules are real business rules, so it still gets aggregates.",
+      aggs: [
+        { name: "Group", desc: "Root Group with its Member entities. Members stay inside because R12 needs every admin in one transaction.",
+          refs: "UserId (Identity)",
+          inv: "G1 G2 G3 L1 L6 R12 R13", snap: "R11 (balance from Settlement) · L4 L5 (all settled?)",
+          rows: [
+            ["root", "Group", "id: GroupId · name: GroupName · currency: Currency · status: GroupStatus · members: Member[1..*]", "“Mallorca 2027” is the same group from creation to archive, whatever its status.", "G1 G2 L1 L6"],
+            ["entity", "Member", "id: MemberId · userId: UserId · role: MemberRole · status: MemberStatus · joinedAt: Instant", "Bob is still Bob after he is promoted or leaves, and old expenses keep pointing at him. Lives inside Group.", "R12 R13"],
+            ["vo", "GroupName", "text, 1–60 characters, trimmed", "A group always has a name that is not empty. Checked once, in the constructor (slide 68).", "G1"],
+            ["vo", "GroupStatus", "OPEN · CLOSED_FOR_SETTLEMENT · ARCHIVED", "Knows the allowed transitions, so a group can’t jump states. ARCHIVED stays final.", "L6"],
+            ["vo", "MemberRole", "ADMIN · MEMBER", "Only ADMIN may close, reopen, archive, remove and promote.", "L1"],
+            ["vo", "MemberStatus", "ACTIVE · FORMER", "Leaving makes a member FORMER. The Member is never deleted.", "R13"]
+          ],
+          cmds: [["create(name, currency, creator)", "GroupCreated, MemberJoined"], ["join(user)", "MemberJoined"], ["leave(member, balance)", "MemberLeft"], ["removeMember(admin, member, balance)", "MemberRemoved"], ["promoteToAdmin(admin, member)", "MemberPromoted"], ["closeGroupForSettlement(admin)", "GroupClosedForSettlement"], ["reopenGroup(admin)", "GroupReopened"], ["archiveGroup(admin, allSettled)", "GroupArchived"]] },
+        { name: "Invitation", desc: "Its own aggregate (D6). It has its own lifecycle and timer; inside Group every invite would lock the whole group.",
+          refs: "GroupId · inviter MemberId · accepting UserId",
+          inv: "R9", snap: "inviter is active, group is OPEN (D12, checked by the application service)",
+          rows: [
+            ["root", "Invitation", "id: InvitationId · groupId: GroupId · invitedBy: MemberId · email: EmailAddress[0..1] · code: InvitationCode · validity: ValidityPeriod · status: InvitationStatus", "Eve accepts this particular invitation, possibly days after it was sent.", "R9"],
+            ["vo", "InvitationStatus", "PENDING · ACCEPTED · DECLINED · EXPIRED", "Only PENDING can change. The other statuses are final.", "R9"],
+            ["vo", "ValidityPeriod", "issuedAt · validUntil = issuedAt + 7 days", "isExpiredAt(now) decides expiry, so an old invitation can’t be accepted even before the timer marks it.", "R9"],
+            ["vo", "EmailAddress", "a syntactically valid address", "Validated once, at the edge, instead of a raw String everywhere.", "–"],
+            ["vo", "InvitationCode", "random secret inside the personal invite link", "Not guessable, and compared by value when someone opens the link.", "D12"]
+          ],
+          cmds: [["issue(groupId, inviter, email?, now)", "MemberInvited"], ["accept(user, now)", "InvitationAccepted → Group.join()"], ["decline(now)", "InvitationDeclined"], ["expire(now)", "no event"]] }
+      ] },
+    { name: "Expense context", type: "Core", arch: "Hexagonal (slide 77)", cls: "k-core",
+      note: "Recording, splitting and correcting expenses. Slide 69 aggregate, slide 64 conflicts resolved.",
+      aggs: [
+        { name: "Expense", desc: "One expense, its split and its earlier versions. Saved in one transaction. Group data only comes in as the GroupRoster snapshot.",
+          refs: "GroupId · MemberId (recorder, payer, participants)",
+          inv: "R1 R3 R3a R4 R7 R8 G2", snap: "R2 R3 R5 L2 L3 R6 R7a (via GroupRoster)",
+          rows: [
+            ["root", "Expense", "id: ExpenseId · groupId: GroupId · recordedBy: MemberId · title: ExpenseTitle · date: LocalDate · amount: Money · paidBy: MemberId · split: Split · status: ExpenseStatus · history: ExpenseRevision[0..*]", "The dinner is the same expense before and after its correction.", "R1 R3a R7 R8"],
+            ["vo", "Split", "strategy: SplitStrategy · shares: Share[1..*]", "Built only through equal(), exact() or byPercentage(). Each makes the shares add up exactly to the amount, remainder cents to the first participants. A broken split can’t exist.", "R4"],
+            ["vo", "Share", "participant: MemberId · amount: Money · percentage: Percentage[0..1]", "What one participant owes for one expense. A correction replaces the shares as a whole; nothing tracks one share over time (D1).", "R3 R4"],
+            ["vo", "SplitStrategy", "EQUAL · EXACT · PERCENTAGE", "Kept so the split can be shown again the way it was entered (slide 64).", "–"],
+            ["vo", "Percentage", "0 < p ≤ 100, two decimals", "The range check lives in one place. The percentages of a split add up to 100 (slide 68).", "R4"],
+            ["vo", "ExpenseTitle", "text, 1–80 characters", "Every expense has a title (J4 step 2).", "–"],
+            ["vo", "ExpenseStatus", "ACTIVE · CORRECTED · REMOVED", "REMOVED is final in the MVP. A CORRECTED expense still counts for balances (F1).", "R8"],
+            ["vo", "ExpenseRevision", "revision no. · previous title, amount, payer, date, split · correctedBy · correctedAt · reason", "A history entry never changes once written, so there is nothing to track over time.", "R7"],
+            ["rej", "ExpenseParticipant", "entity on slide 64 (2..*)", "Fails the entity test: nobody follows one participant entry over time. Replaced by the Share value object (D1).", "D1"]
+          ],
+          cmds: [["record(roster, recorder, title, date, amount, payer, split)", "ExpenseRecorded"], ["correct(roster, by, newVersion, reason)", "ExpenseCorrected"], ["remove(roster, by)", "ExpenseRemoved"]] },
+        { name: "GroupRoster", loose: true, kindLabel: "«snapshot» · not an aggregate", desc: "The Expense context’s own copy of the group, fed by Group events (ACL). Passed into every Expense command (D4).",
+          refs: "GroupId · MemberId",
+          inv: "none of its own", snap: "–",
+          rows: [
+            ["snap", "GroupRoster", "groupId · open? · currency · active members · admins", "Decision D4. The stored copy is a read model; what Expense receives is an immutable value. In Ex4 its adapter may just call Group’s public API.", "R2 R5 R6 R7a"]
+          ],
+          cmds: [] }
+      ] },
+    { name: "Settlement context", type: "Core", arch: "Hexagonal (slide 77)", cls: "k-core",
+      note: "Balances, the settlement plan and settlement payments. Listens to Expense events through an ACL.",
+      aggs: [
+        { name: "BalanceSheet", desc: "One per group (D5). One balance per member and nothing else; no expense or payment lists, only their net effect.",
+          refs: "GroupId · MemberId",
+          inv: "R14 G2 L5 R15", snap: "–",
+          rows: [
+            ["root", "BalanceSheet", "groupId: GroupId (its identity) · currency: Currency · balances: Balance[*] · inSettlementPhase: boolean", "Each group’s balances change with every expense and every confirmed payment.", "R14 L5"],
+            ["vo", "Balance", "member: MemberId · amount: Money (±)", "A member’s net position: + is owed, − owes. isSettled() at 0.", "R14"],
+            ["vo", "ExpenseEffect", "payer · amount · owed: MemberId → Money", "The ACL’s translation of Expense events. Settlement never imports Expense classes.", "R8 R14"],
+            ["vo", "SettlementPlan", "debts: Debt[*]", "Computed from the balances on demand and never stored (D7). It describes payments; it never changes a balance.", "R15"],
+            ["vo", "Debt", "debtor · creditor · amount: Money", "One directed amount in the plan. Keeps Balance and Debt apart, as the glossary does.", "R15"]
+          ],
+          cmds: [["applyExpense(effect)", "on ExpenseRecorded"], ["replaceExpense(before, after)", "on ExpenseCorrected"], ["revertExpense(effect)", "on ExpenseRemoved"], ["applySettlementPayment(debtor, creditor, amount)", "AllBalancesSettled?"], ["startSettlementPhase() / endSettlementPhase()", "AllBalancesSettled?"], ["balanceOf · openDebtOf · openCreditOf · calculateFinalBalances · suggestSettlementPlan", "queries"]] },
+        { name: "SettlementPayment", desc: "One payment from debtor to creditor. Kept out of BalanceSheet so a payment waiting days for confirmation doesn’t hold the balances.",
+          refs: "GroupId · MemberId (debtor, creditor)",
+          inv: "R16 D11", snap: "R17 D10 (open debt and credit from BalanceSheet)",
+          rows: [
+            ["root", "SettlementPayment", "id: SettlementPaymentId · groupId: GroupId · debtor: MemberId · creditor: MemberId · amount: Money · status: SettlementPaymentStatus · recordedAt · decidedAt", "The creditor confirms this particular payment later (slide 68 lists it as an entity).", "R16 R17"],
+            ["vo", "SettlementPaymentStatus", "PENDING · CONFIRMED · REJECTED", "Only PENDING can change. A rejected payment stays REJECTED; the debtor records a new one (D11).", "R16"]
+          ],
+          cmds: [["record(group, debtor, creditor, amount, openDebt, openCredit)", "SettlementPaymentRecorded"], ["confirm(by)", "SettlementPaymentConfirmed"], ["reject(by, reason)", "SettlementPaymentRejected"]] }
+      ] }
+  ];
+
+  var KERNEL = { name: "Shared kernel and typed IDs", kindLabel: "used by every context (context map #4b)", loose: true,
+    desc: "Small immutable types that every aggregate uses. Typed IDs are how aggregates point at each other (slide 67, rule 3).",
+    refs: "–", inv: "G2 (Money refuses mixed currencies)", snap: "–",
+    rows: [
+      ["vo", "Money", "amount: BigDecimal (scale 2) · currency: Currency", "Exact cents, never a double. plus() and minus() return a new Money. Refuses to add two currencies (slide 64).", "G2"],
+      ["vo", "Currency", "ISO 4217 code, e.g. EUR", "One per group, fixed at creation. No conversion in this semester.", "G2"],
+      ["id", "GroupId", "UUID", "Typed so a MemberId can’t be passed where a GroupId belongs.", "rule 3"],
+      ["id", "MemberId", "UUID", "Expense and Settlement store MemberId, not UserId (D3). Former members keep it.", "D3 R13"],
+      ["id", "UserId", "UUID from Keycloak", "Only Group stores it, on Member.", "D3"],
+      ["id", "ExpenseId", "UUID", "Identity of an Expense.", "–"],
+      ["id", "InvitationId", "UUID", "Identity of an Invitation.", "–"],
+      ["id", "SettlementPaymentId", "UUID", "Identity of a SettlementPayment.", "–"]
+    ], cmds: [] };
+
+  var OUTSIDE = { name: "Outside the model", kindLabel: "not aggregates", loose: true,
+    desc: "Things that exist in the system but are not aggregates we design.",
+    refs: "–", inv: "–", snap: "–",
+    rows: [
+      ["ext", "User", "account, login · Identity context (generic)", "Owned by Keycloak, which we buy (slide 25). We only keep the UserId.", "–"],
+      ["ext", "ActivityEntry", "one entry per domain event · Activity context", "A read-only projection of events, a CQRS read model (slide 78). Nothing can change it directly.", "–"],
+      ["ext", "Notification", "email or push message · Notification context (generic)", "Generic delivery. At most a transaction script (slide 60) that turns events into messages.", "–"]
+    ], cmds: [] };
+
+  function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+  function kindChip(k) { return '<span class="kind ' + KINDS[k].cls + '">' + KINDS[k].label + "</span>"; }
+
+  var all = []; // flat list for the table view
+  function rowHtml(r, ctxName, aggName) {
+    var id = "r" + all.length;
+    all.push({ id: id, kind: r[0], name: r[1], holds: r[2], why: r[3], rules: r[4], ctx: ctxName, agg: aggName });
+    return '<tr class="r-' + r[0] + '" data-id="' + id + '"><td>' + kindChip(r[0]) + '</td><td class="nm">' + esc(r[1]) +
+      '</td><td class="holds">' + esc(r[2]) + '</td><td class="why">' + esc(r[3]) + '</td><td class="rules">' + esc(r[4]) + "</td></tr>";
+  }
+  function aggHtml(a, ctxName) {
+    var h = '<div class="agg' + (a.loose ? " loose" : "") + '"><div class="agg-h"><div class="st">' + esc(a.kindLabel || "«Aggregate» · consistency boundary = one transaction") +
+      '</div><h4>' + esc(a.name) + '</h4><div class="line">' + esc(a.desc) + "</div>" +
+      '<div class="line"><b>Holds by ID:</b> ' + esc(a.refs) + ' &nbsp;·&nbsp; <b>Invariants inside:</b> ' + esc(a.inv) + ' &nbsp;·&nbsp; <b>Checked against a snapshot:</b> ' + esc(a.snap) + "</div></div>" +
+      "<table><thead><tr><th>Kind</th><th>Name</th><th>Holds</th><th>Why this kind / what it guards</th><th>Rules</th></tr></thead><tbody>";
+    a.rows.forEach(function (r) { h += rowHtml(r, ctxName, a.name); });
+    h += "</tbody></table>";
+    if (a.cmds.length) {
+      h += '<div class="cmds"><div class="lbl">Commands → events</div>';
+      a.cmds.forEach(function (c) { h += "<div><code>" + esc(c[0]) + '</code> → <span class="ev">' + esc(c[1]) + "</span></div>"; });
+      h += "</div>";
+    }
+    return h + "</div>";
+  }
+
+  // build board
+  var b = '<div class="span head"><div><h2>ShareWise building blocks</h2><p>Every entity, value object and aggregate of the tactical model, grouped by bounded context. Each aggregate is one table: its root first, then what lives inside it, then the commands it accepts and the events they publish. Source: Ex3 tactical model (work/Ex3_Tactical_Model.html), DDD slides 64–69. Names marked D… are our decisions, not lecture content.</p></div>' +
+    '<div class="facts"><div><b>5</b><span>aggregates</span></div><div><b>6</b><span>entities</span></div><div><b>23</b><span>value objects</span></div><div><b>6</b><span>typed IDs</span></div></div></div>';
+  b += '<div class="span legend">' + Object.keys(KINDS).map(function (k) { return "<span>" + kindChip(k) + "</span>"; }).join("") +
+    '<span>solid border = aggregate (one transaction)</span><span>dashed border = not an aggregate</span><span class="ev">orange = domain event</span></div>';
+  CONTEXTS.forEach(function (c) {
+    b += '<div class="col"><div class="ctx ' + c.cls + '"><div class="meta">' + esc(c.type) + " · " + esc(c.arch) + "</div><h3>" + esc(c.name) + "</h3><p>" + esc(c.note) + "</p></div>";
+    c.aggs.forEach(function (a) { b += aggHtml(a, c.name); });
+    b += "</div>";
+  });
+  b += '<div class="span" style="display:grid;grid-template-columns:2fr 1fr;gap:36px;align-items:start">' + aggHtml(KERNEL, "Shared kernel") + aggHtml(OUTSIDE, "Outside") + "</div>";
+  var board = document.getElementById("board");
+  board.innerHTML = b;
+
+  // build flat table
+  var f = '<div class="box"><table><thead><tr><th>Kind</th><th>Name</th><th>Context</th><th>Aggregate</th><th>Holds</th><th>Why this kind / what it guards</th><th>Rules</th></tr></thead><tbody>';
+  var lastGrp = "";
+  all.forEach(function (r) {
+    var g = r.ctx + " · " + r.agg;
+    if (g !== lastGrp) { f += '<tr class="grp" data-grp="' + esc(g) + '"><td colspan="7">' + esc(g) + "</td></tr>"; lastGrp = g; }
+    f += '<tr class="r-' + r.kind + '" data-id="' + r.id + '" data-g="' + esc(g) + '"><td>' + kindChip(r.kind) + '</td><td class="nm">' + esc(r.name) + "</td><td>" + esc(r.ctx) + "</td><td>" + esc(r.agg) +
+      '</td><td class="holds">' + esc(r.holds) + '</td><td class="why">' + esc(r.why) + '</td><td class="rules">' + esc(r.rules) + "</td></tr>";
+  });
+  f += '</tbody></table><div class="empty" id="empty" hidden>Nothing matches. Clear the search or turn a kind back on.</div></div>';
+  var flat = document.getElementById("flat");
+  flat.innerHTML = f;
+
+  // kind filter chips
+  var shown = {}; Object.keys(KINDS).forEach(function (k) { shown[k] = true; });
+  var kinds = document.getElementById("kinds");
+  Object.keys(KINDS).forEach(function (k) {
+    var n = all.filter(function (r) { return r.kind === k; }).length;
+    var btn = document.createElement("button");
+    btn.className = "chipbtn"; btn.id = "kind-" + k; btn.setAttribute("aria-pressed", "true");
+    btn.innerHTML = KINDS[k].label + ' <span class="zoomval" style="min-width:0">' + n + "</span>";
+    btn.addEventListener("click", function () { shown[k] = !shown[k]; btn.setAttribute("aria-pressed", String(shown[k])); applyFilter(); });
+    kinds.appendChild(btn);
+  });
+
+  // search + filter
+  var q = document.getElementById("q");
+  function matches(r, term) {
+    if (!term) return true;
+    return (r.name + " " + r.holds + " " + r.why + " " + r.rules + " " + r.agg + " " + r.ctx + " " + KINDS[r.kind].label).toLowerCase().indexOf(term) >= 0;
+  }
+  var firstHit = null;
+  function applyFilter() {
+    var term = q.value.trim().toLowerCase();
+    firstHit = null;
+    var visibleGroups = {}, any = false;
+    all.forEach(function (r) {
+      var ok = shown[r.kind] && matches(r, term);
+      var bRow = board.querySelector('tr[data-id="' + r.id + '"]');
+      bRow.classList.toggle("dim", !ok);
+      bRow.classList.toggle("hit", ok && !!term);
+      if (ok && term && !firstHit) firstHit = bRow;
+      var fRow = flat.querySelector('tr[data-id="' + r.id + '"]');
+      fRow.classList.toggle("hidden", !ok);
+      if (ok) { visibleGroups[fRow.dataset.g] = true; any = true; }
+    });
+    flat.querySelectorAll("tr.grp").forEach(function (g) { g.classList.toggle("hidden", !visibleGroups[g.dataset.grp]); });
+    document.getElementById("empty").hidden = any;
+  }
+  q.addEventListener("input", applyFilter);
+  q.addEventListener("keydown", function (e) { if (e.key === "Enter" && firstHit && view === "board") focusOn(firstHit); });
+
+  // pan / zoom
+  var stage = document.getElementById("stage");
+  var s = 1, x = 0, y = 0, MIN = 0.12, MAX = 3;
+  var zval = document.getElementById("z-val");
+  function render() { board.style.transform = "translate(" + x + "px," + y + "px) scale(" + s + ")"; zval.textContent = Math.round(s * 100) + "%"; }
+  function zoomAt(ns, cx, cy) {
+    ns = Math.min(MAX, Math.max(MIN, ns));
+    x = cx - (cx - x) * (ns / s); y = cy - (cy - y) * (ns / s); s = ns; render();
+  }
+  function center() { return [stage.clientWidth / 2, stage.clientHeight / 2]; }
+  function fit() {
+    var bw = board.offsetWidth, bh = board.offsetHeight, w = stage.clientWidth, h = stage.clientHeight;
+    var byW = w / bw, both = Math.min(w / bw, h / bh) * 0.98;
+    // on narrow screens fit the width and let the reader drag down
+    s = Math.min(MAX, Math.max(MIN, w < 700 ? byW : both));
+    x = (w - bw * s) / 2; y = Math.max(0, (h - bh * s) / 2); render();
+  }
+  function focusOn(el) {
+    var br = board.getBoundingClientRect(), er = el.getBoundingClientRect();
+    var ex = (er.left - br.left) / s, ey = (er.top - br.top) / s, ew = er.width / s;
+    s = Math.max(s, 1); x = stage.clientWidth / 2 - (ex + ew / 2) * s; y = stage.clientHeight / 3 - ey * s; render();
+  }
+  stage.addEventListener("wheel", function (e) {
+    e.preventDefault();
+    var r = stage.getBoundingClientRect();
+    var d = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
+    zoomAt(s * Math.exp(-d * (e.ctrlKey ? 0.01 : 0.0015)), e.clientX - r.left, e.clientY - r.top);
+  }, { passive: false });
+  var pts = new Map(), last = null, pinch = null;
+  stage.addEventListener("pointerdown", function (e) {
+    stage.setPointerCapture(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]);
+    stage.classList.add("drag"); last = [e.clientX, e.clientY];
+    if (pts.size === 2) { var p = Array.from(pts.values()); pinch = { d: Math.hypot(p[0][0] - p[1][0], p[0][1] - p[1][1]), s: s }; }
+  });
+  stage.addEventListener("pointermove", function (e) {
+    if (!pts.has(e.pointerId)) return;
+    pts.set(e.pointerId, [e.clientX, e.clientY]);
+    var r = stage.getBoundingClientRect();
+    if (pts.size === 2 && pinch) {
+      var p = Array.from(pts.values());
+      var d = Math.hypot(p[0][0] - p[1][0], p[0][1] - p[1][1]);
+      zoomAt(pinch.s * d / pinch.d, (p[0][0] + p[1][0]) / 2 - r.left, (p[0][1] + p[1][1]) / 2 - r.top);
+    } else if (pts.size === 1) {
+      x += e.clientX - last[0]; y += e.clientY - last[1]; last = [e.clientX, e.clientY]; render();
+    }
+  });
+  function up(e) {
+    pts.delete(e.pointerId); if (pts.size < 2) pinch = null;
+    if (pts.size === 1) last = Array.from(pts.values())[0];
+    if (!pts.size) stage.classList.remove("drag");
+  }
+  stage.addEventListener("pointerup", up); stage.addEventListener("pointercancel", up);
+  stage.addEventListener("dblclick", function (e) { var r = stage.getBoundingClientRect(); zoomAt(s * 1.6, e.clientX - r.left, e.clientY - r.top); });
+  document.getElementById("z-in").addEventListener("click", function () { var c = center(); zoomAt(s * 1.25, c[0], c[1]); });
+  document.getElementById("z-out").addEventListener("click", function () { var c = center(); zoomAt(s / 1.25, c[0], c[1]); });
+  document.getElementById("z-fit").addEventListener("click", fit);
+  document.getElementById("z-one").addEventListener("click", function () { var c = center(); zoomAt(1, c[0], c[1]); });
+  document.addEventListener("keydown", function (e) {
+    if (view !== "board" || e.target === q) return;
+    var c = center();
+    if (e.key === "+" || e.key === "=") zoomAt(s * 1.25, c[0], c[1]);
+    else if (e.key === "-") zoomAt(s / 1.25, c[0], c[1]);
+    else if (e.key === "0") fit();
+    else if (e.key.indexOf("Arrow") === 0) {
+      e.preventDefault();
+      if (e.key === "ArrowLeft") x += 80; if (e.key === "ArrowRight") x -= 80; if (e.key === "ArrowUp") y += 80; if (e.key === "ArrowDown") y -= 80;
+      render();
+    }
+  });
+
+  // view toggle
+  var view = "board";
+  function setView(v) {
+    view = v;
+    document.getElementById("v-board").setAttribute("aria-pressed", String(v === "board"));
+    document.getElementById("v-table").setAttribute("aria-pressed", String(v === "table"));
+    stage.hidden = v !== "board"; flat.hidden = v !== "table";
+    document.getElementById("zoomctl").hidden = v !== "board";
+    document.getElementById("hint").hidden = v !== "board";
+    try { localStorage.setItem("sharewise-blocks-view", v); } catch (e) {}
+    if (v === "board") fit();
+  }
+  document.getElementById("v-board").addEventListener("click", function () { setView("board"); });
+  document.getElementById("v-table").addEventListener("click", function () { setView("table"); });
+  var saved = null; try { saved = localStorage.getItem("sharewise-blocks-view"); } catch (e) {}
+  setView(saved === "table" ? "table" : "board");
+  window.addEventListener("resize", function () { if (view === "board") fit(); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { if (view === "board") fit(); });
+})();
+</script>
