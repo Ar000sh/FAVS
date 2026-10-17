@@ -21,7 +21,7 @@ Context for a new Claude session. Read this first, then `CLAUDE.md`.
 ## Already fixed in `firstdraft.drawio` (by the previous session)
 1. `InvitationStatus` moved into the GroupContext box, under `Invitation`, one 1–1 composition, values in lifecycle order. It was a copy of `MembershipStatus` (wrong internal mermaidId); fixed.
 2. Settlement context: dashed **aggregate boundary boxes** (containers) – `«Aggregate» GroupLedger` (GroupLedger + LedgerEntry + LedgerEntryType) and `«Aggregate» SettlementPayment` (SettlementPayment + PaymentStatus). Read models and events outside. Edges routed through gaps.
-3. Events split per aggregate: `SettlementPaymentEvents` (Recorded, Confirmed, Rejected, DebtWaived) and `GroupLedgerEvents` (MemberBalanceStatusChanged, AllBalancesSettled). One edge per relationship.
+3. One `SettlementDomainEvents` box per context (team convention), one labelled arrow per relationship: SettlementPayment publishes (Recorded, Confirmed, Rejected, DebtWaived); GroupLedger publishes (MemberBalanceStatusChanged, AllBalancesSettled); GroupLedger subscribes to (Confirmed, DebtWaived); Group subscribes to (MemberBalanceStatusChanged, AllBalancesSettled). (A split into two boxes was tried and reverted on 17.10.)
 4. `DebtForgiven` renamed to **`DebtWaived`** everywhere (incl. the embedded Mermaid source).
 
 ## Open points (from the review, ranked) – discuss with the user one at a time
@@ -34,7 +34,7 @@ Context for a new Claude session. Read this first, then `CLAUDE.md`.
 4. `waive()` / `DebtWaived` / `WAIVED` is a **new feature** not in `ShareWise_Requirements.md` → add it there or drop for MVP. Waiving isn't a payment; fits better as a GroupLedger command.
 5. `LedgerEntry` is «Entity» but never changes → by slide 65 it's a value object / immutable record. Prepare answer to "doesn't GroupLedger grow forever?" (rule 2: small aggregates) → balances are projected, snapshots possible.
 6. `Expense.correct(Money newAmount, List newShares, …)` too narrow: J5 also changes payer and split strategy. Widen, or decide payer can't be corrected.
-7. `ExpenseShare` lost `percentage` in the draw.io box (it's in the Mermaid source); needed for percentage split (R4).
+7. ~~`ExpenseShare.percentage`~~ – decided 17.10: not needed. Percentages are only input; the split is stored as amounts (`owedShare`) + `SplitStrategy`.
 
 **Diagram tidy-up**
 - `createGroup()` has no params → `(name, currency, creator) → GroupCreated, MemberJoined`.
@@ -49,7 +49,7 @@ Context for a new Claude session. Read this first, then `CLAUDE.md`.
 ## How to edit `firstdraft.drawio` safely (only if you still need the original)
 - **Never use draw.io "Edit → Mermaid"**: the file embeds the original Mermaid source (`mermaidData` on the first `UserObject`); regenerating from it drops all manual fixes.
 - Structure: each class is a `UserObject` (id `hCQeS1Rk4ec1oHEpOPA0-<n>`, attribute `label`) wrapping an `mxCell` with a `swimlane` + `stackLayout` style. Rows are child `mxCell`s (`text` style, height 21, first row at y=36 or y=78 after the stereotype row at y=12; a `line` cell is the compartment divider). When adding/removing rows, update the box height.
-- Containers: `GroupContext` = `…-171`, `ExpenseContext` = `…-21`, `SettlementContext` = `…-80`, `SharedKernel` = `…-2`. Aggregate boxes: `agg-ledger`, `agg-payment`. Ledger events box: `ev-ledger`. Child coordinates are relative to their parent.
+- Containers: `GroupContext` = `…-171`, `ExpenseContext` = `…-21`, `SettlementContext` = `…-80`, `SharedKernel` = `…-2`. Aggregate boxes: `agg-ledger`, `agg-payment`. Ledger events box `ev-ledger` (firstdraft only; the generated diagram uses one `SettlementDomainEvents` box). Child coordinates are relative to their parent.
 - Edges with `parent="1"` use absolute coordinates for waypoints; edges inside a container use coordinates relative to it.
 - Validate after each change: `python3 -c "import xml.dom.minidom as m; m.parse('work/firstdraft.drawio')"`.
 - Commit + push after each agreed step (only one session should edit the file at a time).

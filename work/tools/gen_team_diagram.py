@@ -38,7 +38,7 @@ C = {
                  "+ correct(Money newAmount, List<ExpenseShare> newShares,",
                  "      String reason, UserId actor): ExpenseCorrected",
                  "+ remove(UserId actor): ExpenseRemoved"]),
-    "ExpenseShare": ("vo", ["+ participantId: UserId", "+ owedShare: Money", "+ percentage: Percentage"], []),
+    "ExpenseShare": ("vo", ["+ participantId: UserId", "+ owedShare: Money"], []),
     "ExpenseRevision": ("vo", ["+ previousAmount: Money", "+ previousShares: List<ExpenseShare>", "+ correctedAt: Instant",
                                "+ correctedBy: UserId", "+ reason: String"], []),
     "SplitStrategy": ("enum", ["EQUAL", "EXACT", "PERCENTAGE"], []),
@@ -54,7 +54,6 @@ C = {
                                "+ referenceId: String", "+ occurredAt: Instant"], []),
     "LedgerEntryType": ("enum", ["EXPENSE_PAID", "EXPENSE_OWED", "EXPENSE_REVERSAL", "PAYMENT_SENT",
                                  "PAYMENT_RECEIVED", "DEBT_WAIVED"], []),
-    "GroupLedgerEvents": ("events", ["MemberBalanceStatusChanged", "AllBalancesSettled"], []),
     "MemberBalance": ("readmodel", ["+ userId: UserId", "+ netBalance: Money"], []),
     "SettlementPlan": ("readmodel", ["+ simplifiedDebts: List<DirectedDebt>"], []),
     "DirectedDebt": ("vo", ["+ fromDebtor: UserId", "+ toCreditor: UserId", "+ amount: Money"], []),
@@ -65,8 +64,9 @@ C = {
                            "+ reject(UserId creditor, String note): SettlementPaymentRejected",
                            "+ waive(UserId creditor, String note): DebtWaived"]),
     "PaymentStatus": ("enum", ["PENDING", "CONFIRMED", "REJECTED", "WAIVED"], []),
-    "SettlementPaymentEvents": ("events", ["SettlementPaymentRecorded", "SettlementPaymentConfirmed",
-                                           "SettlementPaymentRejected", "DebtWaived"], []),
+    "SettlementDomainEvents": ("events", ["SettlementPaymentRecorded", "SettlementPaymentConfirmed",
+                                          "SettlementPaymentRejected", "DebtWaived",
+                                          "MemberBalanceStatusChanged", "AllBalancesSettled"], []),
     # Shared kernel
     "Money": ("vo", ["+ amount: BigDecimal", "+ currency: Currency"],
               ["+ add(Money): Money", "+ subtract(Money): Money", "+ negate(): Money", "+ isPositive(): boolean",
@@ -240,17 +240,16 @@ al_w, al_h = lw + 40, 50 + lh + ROWGAP + leh + ROWGAP + lth + 30
 i = [k for k, c in enumerate(cells) if 'id="AL"' in c][0]
 cells[i] = cells[i].replace('width="10" height="10"', f'width="{al_w}" height="{al_h}"'); box["AL"] = (box["AL"][0], box["AL"][1], al_w, al_h)
 
-MID = 20 + al_w + 120                      # middle column: ledger events + read models
-gle_w, gle_h = cls("GroupLedgerEvents", "S", MID, 100)
-corridor = 100 + gle_h + 40                 # free horizontal lane under the ledger events
-mb_y = corridor + 60
+MID = 20 + al_w + 380                      # middle column: the context's events box + read models (wide gaps leave room for arrow labels)
+sde_w, sde_h = cls("SettlementDomainEvents", "S", MID, 100)
+mb_y = 100 + sde_h + 80
 mbw, mbh = cls("MemberBalance", "S", MID, mb_y)
 spw, sph = cls("SettlementPlan", "S", MID, mb_y + mbh + 60)
 ddw, ddh = size("DirectedDebt")
 cls("DirectedDebt", "S", int(MID + (spw - ddw) / 2), mb_y + mbh + 60 + sph + ROWGAP)
-mid_w = max(gle_w, mbw, spw, ddw)
+mid_w = max(sde_w, mbw, spw, ddw)
 
-AP_X = MID + mid_w + 140
+AP_X = MID + mid_w + 360
 container("AP", "S", AP_X, 50, 10, 10, "«Aggregate» SettlementPayment · 1 transaction", *AGG, dashed=True)
 pw, ph = cls("SettlementPayment", "AP", 20, 50)
 psw, psh = size("PaymentStatus")
@@ -258,10 +257,8 @@ cls("PaymentStatus", "AP", int(20 + (pw - psw) / 2), 50 + ph + ROWGAP)
 ap_w, ap_h = pw + 40, 50 + ph + ROWGAP + psh + 30
 i = [k for k, c in enumerate(cells) if 'id="AP"' in c][0]
 cells[i] = cells[i].replace('width="10" height="10"', f'width="{ap_w}" height="{ap_h}"'); box["AP"] = (box["AP"][0], box["AP"][1], ap_w, ap_h)
-spe_w, spe_h = size("SettlementPaymentEvents")
-cls("SettlementPaymentEvents", "S", AP_X + 20, 50 + ap_h + 70)
-s_w = AP_X + max(ap_w, 20 + spe_w) + 30
-s_h = max(50 + al_h, 50 + ap_h + 70 + spe_h, mb_y + mbh + 60 + sph + ROWGAP + ddh) + 40
+s_w = AP_X + ap_w + 30
+s_h = max(50 + al_h, 50 + ap_h, mb_y + mbh + 60 + sph + ROWGAP + ddh) + 40
 i = [k for k, c in enumerate(cells) if 'id="S"' in c][0]
 cells[i] = cells[i].replace('width="10" height="10"', f'width="{s_w}" height="{s_h}"'); box["S"] = (S0[0], S0[1], s_w, s_h)
 
@@ -269,19 +266,20 @@ comp("LedgerEntry", "GroupLedger", "append-only entries", ("0..*", "1"))
 comp("LedgerEntryType", "LedgerEntry")
 comp("DirectedDebt", "SettlementPlan", "", ("0..*", "1"))
 comp("PaymentStatus", "SettlementPayment")
-L = box["GroupLedger"]; GLE = box["GroupLedgerEvents"]; MB = box["MemberBalance"]; SP = box["SettlementPlan"]
-P = box["SettlementPayment"]; SPE = box["SettlementPaymentEvents"]; Sx, Sy = S0
-edge("GroupLedger", "GroupLedgerEvents", PUB, "publishes", exit=(1, (GLE[1] + 40 - L[1]) / L[3]), entry=(0, 40 / GLE[3]))
+L = box["GroupLedger"]; SDE = box["SettlementDomainEvents"]; MB = box["MemberBalance"]; SP = box["SettlementPlan"]
+P = box["SettlementPayment"]; Sx, Sy = S0
+y1, y2 = SDE[1] + 45, SDE[1] + SDE[3] - 30   # two separate horizontal lanes between GroupLedger and the events box
+edge("GroupLedger", "SettlementDomainEvents", PUB, "publishes (MemberBalanceStatusChanged, AllBalancesSettled)",
+     exit=(1, (y1 - L[1]) / L[3]), entry=(0, (y1 - SDE[1]) / SDE[3]))
+edge("GroupLedger", "SettlementDomainEvents", SUB, "subscribes to (Confirmed, DebtWaived)",
+     exit=(1, (y2 - L[1]) / L[3]), entry=(0, (y2 - SDE[1]) / SDE[3]))
 edge("GroupLedger", "MemberBalance", DASH, "projects", exit=(1, min(0.95, (MB[1] + 30 - L[1]) / L[3])), entry=(0, 30 / MB[3]))
 x_down = L[0] + L[2] - 20
 edge("GroupLedger", "SettlementPlan", DASH, "computes", exit=((x_down - L[0]) / L[2], 1), entry=(0, 0.5),
      points=[(x_down, SP[1] + SP[3] / 2)])
-edge("SettlementPayment", "SettlementPaymentEvents", PUB, "publishes", exit=(0.12, 1),
-     entry=((P[0] + 0.12 * P[2] - SPE[0]) / SPE[2], 0))
-lane_y = Sy + corridor
-lane_x = box["AP"][0] - 60
-edge("GroupLedger", "SettlementPaymentEvents", SUB, "subscribes to (Confirmed, DebtWaived)",
-     exit=(1, (lane_y - L[1]) / L[3]), entry=(0, 0.5), points=[(lane_x, lane_y), (lane_x, SPE[1] + SPE[3] / 2)], label_at=-0.45)
+y3 = SDE[1] + 45
+edge("SettlementPayment", "SettlementDomainEvents", PUB, "publishes (Recorded, Confirmed, Rejected, DebtWaived)",
+     exit=(0, (y3 - P[1]) / P[3]), entry=(1, (y3 - SDE[1]) / SDE[3]))
 
 # ================================================================== Shared kernel (right of Settlement)
 K0 = (s_w + 120, S0[1])
@@ -315,11 +313,11 @@ for k, (tgt, lbl, sty, fy) in enumerate((("Money", "totalAmount", COMP, 0.55), (
 gap_y = S0[1] - 50
 edge("GroupLedger", "ExpenseDomainEvents", SUB, "subscribes to", exit=(0.85, 0), entry=(0.5, 1),
      points=[(L[0] + 0.85 * L[2], gap_y), (EDE[0] + EDE[2] / 2, gap_y)], label_at=0.6)
-# Group subscribes to GroupLedgerEvents: out of Group's left side, down the left margin, into the ledger events from above
+# Group subscribes to SettlementDomainEvents: out of Group's left side, down the left margin, into the events box from above
 gap_y2 = S0[1] - 25
 Gr = box["Group"]
-edge("Group", "GroupLedgerEvents", SUB, "subscribes to (MemberBalanceStatusChanged, AllBalancesSettled)",
-     exit=(0, 0.5), entry=(0.5, 0), points=[(-40, Gr[1] + Gr[3] / 2), (-40, gap_y2), (GLE[0] + GLE[2] / 2, gap_y2)], label_at=0.55)
+edge("Group", "SettlementDomainEvents", SUB, "subscribes to (MemberBalanceStatusChanged, AllBalancesSettled)",
+     exit=(0, 0.5), entry=(0.5, 0), points=[(-40, Gr[1] + Gr[3] / 2), (-40, gap_y2), (SDE[0] + SDE[2] / 2, gap_y2)], label_at=0.55)
 
 # ================================================================== title + legend
 leg = ("<b style='font-size:18px'>ShareWise – class diagram (team version 17.10.26)</b><br/>"
