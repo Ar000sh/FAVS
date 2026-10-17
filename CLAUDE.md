@@ -1,0 +1,92 @@
+# FAVS: Study Workspace
+
+Uni module **FAVS = "Fortgeschrittene Aspekte verteilter Systeme – Cloud-Native Computing"**.
+Hans Grönniger · Hochschule Hannover, Fakultät IV · WS 26/27 · Master.
+Moodle: https://moodle.hs-hannover.de/course/view.php?id=32888
+
+The student (me) uses this folder to study the scripts, solve the exercises and prepare the 3 presentations. **I missed Exercises 1 and 2 and am catching up.**
+
+## Auto-loaded context
+@notes/00_Module_Overview.md
+@prep/P1_Modular_Architecture.md
+@work/Ex1b_ShareWise_User_Journeys.md
+
+Read on demand (too big to always load):
+- `notes/skripte/01_Intro.md`, `02_DDD.md`, `03_TechStack.md`
+- `notes/norms/ISO22123-1_Vocabulary.md`, `ISO22123-2_Concepts.md`
+
+## Key facts (quick reference)
+- **Grading:** written exam 55 pts + project 45 pts. **≥50 % in each separately.** Attendance + active discussion at all 3 presentations is mandatory.
+- **Presentations:**
+  - **P1 20.10.26** modular architecture of ShareWise
+  - P2 17.11.26 monolith implementation, limits, change drivers
+  - P3 15.12.26 microservices + patterns
+- **The only spec for P1** is one line in the schedule (Intro slide 7). Content and length are *not* specified. The P1 prep file is our inference.
+  - **Team workshop plan (Wed 14.10):** `prep/P1_Team_Workshop_Plan.md`. It has 12 steps from domain to hexagonal; each step lists input, outcome, what it feeds and decisions.
+- **Semester project = ShareWise**, "shared expenses made simple" (like Splitwise/Tricount).
+  - **Path:** DDD model → modular monolith (Spring Boot + Next.js) → containers → CI/CD → eduDSCloud/Proxmox → Azure → microservices with RabbitMQ, outbox, Saga.
+- **Lectures:** Tuesday. **Exercise due:** the following Monday.
+
+## Exercise status
+| Ex | Due | Task | Status |
+|---|---|---|---|
+| 1a | 05.10 | NIST vs ISO/IEC 22123 (service models) | 🟡 material in `notes/norms/`, comparison table in P1 prep; no own write-up yet |
+| 1b | 05.10 | ShareWise user journey, fuller example | ✅ draft in `work/Ex1b_ShareWise_User_Journeys.md` (🟢 decisions still to confirm) |
+| 2 | 12.10 | Subdomains, Bounded Contexts, Context Map, Ubiquitous Language | 🟡 Part 1 (subdomains) drafted in `work/Ex2_ShareWise_Domain_and_Subdomains.md`: 2 core (Expense Sharing, Settlement), 2 supporting, 2 generic (currency exchange + payment transfer dropped 14.10). It also lists the open questions (§4). `work/Ex2_Subdomains_vs_Bounded_Contexts.md` + `.html` (visual) explain the subdomain → context mapping and give a first proposal of 6 contexts, to confirm in the workshop. Context map proposal in `work/Ex2_Context_Map.md`. Glossary, rules and operations in `work/Ex2_Ubiquitous_Language.md`. All 4 parts drafted; confirm them with the team at the workshop |
+| 3 | 19.10 | Entities/VOs, Aggregates, Domain Events, Hexagonal Architecture | ⏳ |
+| 4–5 | 26.10 / 02.11 | Implement modulith (AI allowed) | ⏳ |
+
+*(Update this table whenever an exercise progresses.)*
+
+## Design decisions made so far (ShareWise)
+**Single source of truth: `work/ShareWise_Requirements.md`** (scope, actors, rules L1–L6 + R1–R17, journeys J1–J17, Mallorca example, events, open questions). If another file disagrees, that file wins; update it first. Short form:
+- **Group lifecycle:** OPEN → CLOSED_FOR_SETTLEMENT → ARCHIVED.
+  - Only **admins** close or reopen.
+  - When closed: no new or corrected expenses, only settlements.
+  - Closing does not need balances = 0. **Archiving does**, and happens automatically once the last balance reaches 0.
+  - ARCHIVED is final.
+- **Expenses:**
+  - Split equal / exact / percentage.
+  - Corrections keep history (status CORRECTED). Removal = soft delete (REMOVED).
+  - Recorder, payer or admin may edit.
+- **Membership:**
+  - Join only via an invite, which expires after 7 days.
+  - Late joiners don't share in earlier expenses.
+  - Leave or remove only at **balance 0**.
+  - The last admin must promote someone before leaving.
+- **Settlement:** simplified plan (minimum number of payments, never changes anyone's total balance). Payments are recorded by the debtor and confirmed by the creditor.
+- **Known slide conflict:** ExpenseShare is a VO on DDD slide 68 but an ExpenseParticipant entity on slide 64. Still to be decided.
+
+## Folder layout
+```
+skripte/        raw lecture PDFs (NN.Name.pdf), added weekly
+exercises/      exercise screenshots (ExerciseN.png) + exercise PDFs (ISO norms)
+notes/          study notes per source; 00_Module_Overview.md = schedule + index
+  skripte/      one note per script: NN_Name.md
+  norms/        ISO/IEC 22123 notes
+prep/           P1/P2/P3 presentation prep sheets (P2/P3 are skeletons)
+work/           my exercise solutions/drafts (ExN_*.md)
+```
+
+## Conventions
+- Notes cite **"(slide N)" = PDF page number**. Anything not from the source is marked **"(note:)"**.
+- 🟢 **Decision** marks our own design choices, which must be defensible in presentations.
+- Never present inference as lecture content. Say clearly when something is not on the slides.
+- Language: English. Keep German terms where the slides use them.
+- Verify calculations (balances etc.) with a quick script before writing them down.
+
+## Workflow
+**When a new script or exercise appears** (check `skripte/` and `exercises/` for files without a note):
+1. Extract the text: `pdftotext -layout file.pdf out.txt` (works).
+2. For diagrams, render pages with **PyMuPDF** (`python -c "import fitz …"`). It is installed; poppler/pdftoppm is **missing**, so the Read tool can't render PDFs directly.
+3. Write `notes/skripte/NN_Name.md`: all concepts with slide refs, every ShareWise mention, and a "relevant for exercises" section.
+4. Update the schedule table in `notes/00_Module_Overview.md`, the matching `prep/P*.md`, and the exercise status table above.
+
+**When studying a script with me:**
+- Go through the script in sections, explaining concepts with the ShareWise example.
+- Then quiz me with exam-style questions (definitions, comparisons, "why" questions).
+- Note weak spots at the bottom of the relevant note under `## My open questions / weak spots`.
+
+**When solving exercises:** put drafts in `work/ExN_*.md`. Build on the journeys and decisions above, and cite the slides used.
+
+Known gap: `notes/skripte/03_TechStack.md` was made from text only. Its screenshot slides (2, 24, 29, 35, 40, 45, 51, 62, 64, 66) were not checked visually.

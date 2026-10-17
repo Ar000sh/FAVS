@@ -1,0 +1,1383 @@
+<title>ShareWise Tactical Model</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+  /* Layout: one reading column (max 1120px) under a sticky section bar; tables and diagrams scroll sideways inside their own frames on phones.
+     Colour semantics follow the Ex2 visual: blue = core, ochre = supporting, green-grey = generic, orange = domain event. */
+  :root {
+    --bg: #f4f5f2; --panel: #ffffff; --ink: #1a1d1f; --quiet: #5d6368; --line: #cdd1cb; --soft: #e7e9e4;
+    --core: #2a63c6; --core-tint: #e8eefa; --sup: #86681a; --sup-tint: #f4eddb; --gen: #55675a; --gen-tint: #e7ede8;
+    --event: #c0410d; --event-tint: #fcece1; --ok: #2b7949; --ok-tint: #e1f0e6; --warn: #985a00; --warn-tint: #f9eed7; --bad: #b3342c;
+    --f-display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+    --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --f-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #131517; --panel: #1b1e21; --ink: #e8eaeb; --quiet: #a0a6ab; --line: #41464b; --soft: #272b2f;
+      --core: #84aaf3; --core-tint: #1b2639; --sup: #d7b55e; --sup-tint: #30281a; --gen: #a5b9a8; --gen-tint: #212924;
+      --event: #ff9459; --event-tint: #362116; --ok: #6fcf93; --ok-tint: #16301f; --warn: #f0b552; --warn-tint: #33280f; --bad: #ff7b72;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #131517; --panel: #1b1e21; --ink: #e8eaeb; --quiet: #a0a6ab; --line: #41464b; --soft: #272b2f;
+    --core: #84aaf3; --core-tint: #1b2639; --sup: #d7b55e; --sup-tint: #30281a; --gen: #a5b9a8; --gen-tint: #212924;
+    --event: #ff9459; --event-tint: #362116; --ok: #6fcf93; --ok-tint: #16301f; --warn: #f0b552; --warn-tint: #33280f; --bad: #ff7b72;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.6 var(--f-body); }
+  body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+  .wrap { max-width: 1120px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+  /* section bar */
+  .bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line); }
+  .bar ul { list-style: none; margin: 0; padding-block: 8px; display: flex; gap: 4px; overflow-x: auto; scrollbar-width: thin; }
+  .bar a { display: block; white-space: nowrap; padding: 4px 10px; border-radius: 6px; color: var(--quiet); text-decoration: none; font: 500 13px/1.4 var(--f-body); }
+  .bar a:hover { color: var(--ink); background: var(--soft); }
+  .bar a:focus-visible, input:focus-visible { outline: 2px solid var(--core); outline-offset: 2px; }
+
+  /* type */
+  h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; }
+  h1 { font-size: clamp(30px, 4.6vw, 44px); font-weight: 700; line-height: 1.08; letter-spacing: -0.01em; }
+  h2 { font-size: clamp(23px, 3vw, 29px); font-weight: 600; line-height: 1.15; }
+  h3 { font-size: 19px; font-weight: 600; line-height: 1.25; }
+  p { margin: 0; max-width: 72ch; }
+  code, .mono { font-family: var(--f-mono); font-size: 0.9em; }
+  .eyebrow { font: 500 12px/1.3 var(--f-mono); text-transform: uppercase; letter-spacing: 0.07em; color: var(--quiet); }
+  .lead { font-size: 17px; color: var(--quiet); }
+  .q { color: var(--quiet); }
+  .small { font-size: 13px; }
+
+  /* page rhythm */
+  header.hero { padding-block: 40px 28px; display: grid; gap: 14px; }
+  section { padding-block: 44px 8px; display: grid; gap: 16px; scroll-margin-top: 56px; }
+  section > .intro { display: grid; gap: 8px; }
+  footer { padding-block: 40px 64px; }
+
+  .facts { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 6px 0 0; padding: 14px 0 0; border-top: 1px solid var(--line); }
+  .facts div { display: flex; align-items: baseline; gap: 6px; }
+  .facts b { font: 600 22px/1 var(--f-display); font-variant-numeric: tabular-nums; }
+  .facts span { color: var(--quiet); font-size: 13px; }
+
+  /* chips */
+  .chip { display: inline-block; font: 600 11.5px/1.5 var(--f-body); padding: 1px 8px; border-radius: 99px; white-space: nowrap; vertical-align: 1px; }
+  .c-core { background: var(--core-tint); color: var(--core); }
+  .c-sup { background: var(--sup-tint); color: var(--sup); }
+  .c-gen { background: var(--gen-tint); color: var(--gen); }
+  .c-ev { background: var(--event-tint); color: var(--event); }
+  .c-ok { background: var(--ok-tint); color: var(--ok); }
+  .c-warn { background: var(--warn-tint); color: var(--warn); }
+  .c-plain { background: var(--soft); color: var(--quiet); }
+  .dec::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); margin-right: 5px; vertical-align: 1px; }
+  .ev { color: var(--event); }
+
+  /* figures */
+  figure { margin: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: grid; gap: 10px; min-width: 0; }
+  .scroll { overflow-x: auto; }
+  figure svg { display: block; width: 100%; min-width: 780px; height: auto; }
+  figcaption { color: var(--quiet); font-size: 13.5px; max-width: 90ch; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 12.5px; color: var(--quiet); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend svg { min-width: 0; width: 34px; height: 12px; display: inline-block; }
+
+  svg text { fill: var(--ink); font-family: var(--f-body); font-size: 12px; }
+  svg .st { fill: var(--quiet); font-size: 11px; font-style: italic; }
+  svg .nm { font-family: var(--f-display); font-weight: 700; font-size: 15px; }
+  svg .m { font-family: var(--f-mono); font-size: 11.5px; }
+  svg .ms { font-family: var(--f-mono); font-size: 11px; }
+  svg .ref { fill: var(--quiet); font-family: var(--f-mono); font-size: 10.5px; }
+  svg .cap { fill: var(--quiet); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; }
+  svg .b { font-weight: 600; }
+  svg .q { fill: var(--quiet); }
+  svg .ev { fill: var(--event); }
+  svg .core { fill: var(--core); }
+  svg .sup { fill: var(--sup); }
+  svg .gen { fill: var(--gen); }
+  svg .band-core { fill: var(--core-tint); stroke: var(--core); stroke-opacity: 0.35; }
+  svg .band-sup { fill: var(--sup-tint); stroke: var(--sup); stroke-opacity: 0.4; }
+  svg .band-gen { fill: var(--gen-tint); stroke: var(--gen); stroke-opacity: 0.4; }
+  svg .band-plain { fill: var(--panel); stroke: var(--line); }
+  svg .box { fill: var(--panel); stroke: var(--ink); stroke-width: 1.2; }
+  svg .box.root { stroke-width: 2.4; }
+  svg .box.snap { stroke: var(--quiet); stroke-dasharray: 5 4; }
+  svg .box.evbox { fill: var(--event-tint); stroke: var(--event); }
+  svg .div { stroke: var(--line); stroke-width: 1; fill: none; }
+  svg .l-ev { stroke: var(--event); stroke-width: 1.8; fill: none; }
+  svg .l-id { stroke: var(--quiet); stroke-width: 1.4; stroke-dasharray: 6 4; fill: none; }
+  svg .l-q { stroke: var(--quiet); stroke-width: 2; stroke-dasharray: 0.5 4.5; stroke-linecap: round; fill: none; }
+  svg .l-tr { stroke: var(--ink); stroke-width: 1.4; fill: none; }
+  svg .l-comp { stroke: var(--ink); stroke-width: 1.2; fill: none; }
+  svg .dia { fill: var(--ink); }
+  svg .mk-ev { fill: var(--event); }
+  svg .mk-q { fill: var(--quiet); }
+  svg .mk-tr { fill: var(--ink); }
+  svg .mk-id { fill: none; stroke: var(--quiet); stroke-width: 1.5; }
+  svg .pill { fill: var(--panel); stroke: var(--ink); stroke-width: 1.3; }
+  svg .pill-in { fill: none; stroke: var(--ink); stroke-width: 1; }
+
+  /* tables */
+  .tablebox { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow-x: auto; min-width: 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--soft); vertical-align: top; }
+  thead th { font: 600 12px/1.35 var(--f-body); color: var(--quiet); background: var(--panel); border-bottom: 1px solid var(--line); }
+  tbody tr:last-child td { border-bottom: 0; }
+  tr.grp td { background: var(--soft); font: 600 12px/1.4 var(--f-body); letter-spacing: 0.04em; text-transform: uppercase; color: var(--quiet); padding-block: 6px; }
+  td.nm { font-family: var(--f-mono); font-size: 13px; font-weight: 600; white-space: nowrap; }
+  td.ck, th.ck { text-align: center; white-space: nowrap; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--f-mono); font-size: 13px; white-space: nowrap; }
+  .y { color: var(--ok); font-weight: 700; }
+  .n { color: var(--bad); font-weight: 700; }
+  .p { color: var(--warn); font-weight: 700; }
+  tr.rejected td { color: var(--quiet); }
+  tr.rejected td.nm { text-decoration: line-through; text-decoration-color: var(--bad); }
+  tr.hl td { background: var(--event-tint); }
+  .w-why { min-width: 260px; }
+  .w-mid { min-width: 170px; }
+  input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--ok); cursor: pointer; margin: 2px 0 0; }
+  .progress { font: 600 13px/1.4 var(--f-body); color: var(--ok); }
+
+  /* aggregate cards */
+  .agg { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 22px; display: grid; gap: 18px; min-width: 0; }
+  .agg-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; }
+  .agg-head h3 { font-family: var(--f-mono); font-size: 21px; font-weight: 600; }
+  .agg-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+  .agg-cols > div { display: grid; gap: 14px; align-content: start; min-width: 0; }
+  @media (max-width: 860px) { .agg-cols { grid-template-columns: 1fr; } }
+  .label { font: 600 12px/1.3 var(--f-body); letter-spacing: 0.05em; text-transform: uppercase; color: var(--quiet); }
+  ul.plain, ul.check, ul.cmd { margin: 0; padding: 0; list-style: none; display: grid; gap: 7px; }
+  ul.check li, ul.cmd li { position: relative; padding-left: 24px; }
+  ul.check li::before { content: "✓"; position: absolute; left: 2px; top: 0; color: var(--ok); font-weight: 700; }
+  ul.check li.x::before { content: "✗"; color: var(--bad); }
+  ul.check li.snapshot::before { content: "◑"; color: var(--warn); }
+  ul.cmd li::before { content: "▸"; position: absolute; left: 4px; top: 0; color: var(--event); }
+  .rule { font: 600 12px/1.5 var(--f-mono); color: var(--quiet); white-space: nowrap; }
+  .note { border-left: 3px solid var(--line); padding: 2px 0 2px 12px; color: var(--quiet); font-size: 14px; }
+
+  /* decision + finding cards */
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 12px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+  .card h3 { font-size: 17px; }
+  .card .kicker { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .modes { display: flex; flex-wrap: wrap; gap: 8px; }
+
+  @media (max-width: 560px) {
+    body { font-size: 14.5px; }
+    .agg { padding: 16px; }
+    th, td { padding: 8px 10px; }
+  }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  html { scroll-behavior: smooth; }
+</style>
+
+<nav class="bar" aria-label="Sections">
+  <ul class="wrap">
+    <li><a href="#overview">Overview</a></li>
+    <li><a href="#decisions">Decisions</a></li>
+    <li><a href="#values">Value objects</a></li>
+    <li><a href="#entities">Entities</a></li>
+    <li><a href="#aggregates">Aggregates</a></li>
+    <li><a href="#lifecycles">Lifecycles</a></li>
+    <li><a href="#events">Domain events</a></li>
+    <li><a href="#features">Functionality checklist</a></li>
+    <li><a href="#rules">Rule checklist</a></li>
+    <li><a href="#replay">Mallorca replay</a></li>
+    <li><a href="#findings">Review findings</a></li>
+  </ul>
+</nav>
+
+<header class="hero wrap">
+  <div class="eyebrow">FAVS · Ex3 tactical design · input for P1 on 20.10.26</div>
+  <h1>ShareWise tactical model</h1>
+  <p class="lead">Entities, value objects, aggregates and domain events for ShareWise, derived from <code>ShareWise_Requirements.md</code> (state 14.10). Every building block has a checklist that says why it is classified the way it is. The functionality and rule checklists further down show that every Must feature and every rule has a home.</p>
+  <p class="small q"><span class="chip c-plain">Draft 17.10.26</span> &nbsp;<span class="chip c-ok dec">Decision</span> marks our own choice, not lecture content, and needs team agreement. &nbsp;“slide N” is a page of the 02.DDD deck.</p>
+  <div class="facts" aria-label="Model size">
+    <div><b>5</b><span>aggregates</span></div>
+    <div><b>6</b><span>entities</span></div>
+    <div><b>23</b><span>value objects + 6 typed IDs</span></div>
+    <div><b>18</b><span>domain events</span></div>
+    <div><b>12/12</b><span>Must features covered</span></div>
+    <div><b>28/28</b><span>rules with a home</span></div>
+  </div>
+</header>
+
+<main class="wrap">
+
+<!-- ============================ OVERVIEW ============================ -->
+<section id="overview">
+  <div class="intro">
+    <div class="eyebrow">Overview</div>
+    <h2>Five aggregates in three contexts</h2>
+    <p>Identity is bought (Keycloak), and Activity and Notification only listen, so the tactical model lives in three contexts: Group, Expense and Settlement. No aggregate holds another aggregate as an object. Each keeps IDs and learns about changes through events (slide 67, rules 3 and 4).</p>
+  </div>
+  <figure>
+    <div class="scroll">
+      <svg viewBox="0 0 1000 640" role="img" aria-label="Aggregate map. Group context holds Invitation and Group. Expense context holds Expense and a GroupRoster snapshot. Settlement context holds BalanceSheet and SettlementPayment. Group sends membership and status events to GroupRoster and BalanceSheet. Expense sends ExpenseRecorded, Corrected and Removed to BalanceSheet. SettlementPayment sends Confirmed to BalanceSheet. BalanceSheet sends AllBalancesSettled back to Group. Group asks BalanceSheet for a member's balance.">
+        <defs>
+          <marker id="f1-ev" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mk-ev"/></marker>
+          <marker id="f1-q" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mk-q"/></marker>
+          <marker id="f1-id" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto"><path d="M1,1 L9,5 L1,9" class="mk-id"/></marker>
+        </defs>
+
+        <!-- Group context -->
+        <rect x="20" y="36" width="620" height="196" rx="14" class="band-sup"/>
+        <text x="36" y="58" class="cap sup">GROUP CONTEXT · SUPPORTING · LAYERED</text>
+        <rect x="40" y="80" width="200" height="128" rx="8" class="box root"/>
+        <text x="56" y="102" class="st">«Aggregate Root»</text>
+        <text x="56" y="122" class="nm">Invitation</text>
+        <text x="56" y="146" class="ms">ValidityPeriod (7 days)</text>
+        <text x="56" y="164" class="ms">InvitationStatus</text>
+        <text x="56" y="192" class="ref">→ GroupId, MemberId</text>
+        <rect x="400" y="72" width="220" height="144" rx="8" class="box root"/>
+        <text x="416" y="94" class="st">«Aggregate Root»</text>
+        <text x="416" y="114" class="nm">Group</text>
+        <text x="416" y="138" class="ms">GroupName · Currency</text>
+        <text x="416" y="156" class="ms">GroupStatus</text>
+        <text x="416" y="174" class="ms">Member 1..* «Entity»</text>
+        <text x="416" y="200" class="ref">→ UserId</text>
+        <path d="M240 132 H396" class="l-ev" marker-end="url(#f1-ev)"/>
+        <text x="320" y="124" text-anchor="middle" class="ms ev">InvitationAccepted</text>
+        <path d="M240 176 H396" class="l-id" marker-end="url(#f1-id)"/>
+        <text x="320" y="194" text-anchor="middle" class="ref">GroupId</text>
+
+        <!-- Identity -->
+        <rect x="700" y="36" width="280" height="96" rx="14" class="band-gen"/>
+        <text x="716" y="58" class="cap gen">IDENTITY · GENERIC · KEYCLOAK</text>
+        <text x="716" y="84">User account, not modelled by us</text>
+        <text x="716" y="104" class="q">gives the UserId at login</text>
+        <path d="M620 110 H696" class="l-id" marker-end="url(#f1-id)"/>
+        <text x="660" y="102" text-anchor="middle" class="ref">UserId</text>
+
+        <!-- Group to Expense / Settlement -->
+        <path d="M420 216 V341" class="l-ev" marker-end="url(#f1-ev)"/>
+        <text x="410" y="262" text-anchor="end" class="ms ev">MemberJoined / Left / Removed / Promoted</text>
+        <text x="410" y="278" text-anchor="end" class="ms ev">GroupClosed / Reopened / Archived</text>
+        <path d="M600 216 V341" class="l-ev" marker-end="url(#f1-ev)"/>
+        <text x="592" y="262" text-anchor="end" class="ms ev">MemberJoined</text>
+        <text x="592" y="278" text-anchor="end" class="ms ev">GroupClosed / Reopened</text>
+        <path d="M620 190 H690 V341" class="l-q" marker-end="url(#f1-q)"/>
+        <text x="684" y="248" text-anchor="end" class="ref">balanceOf</text>
+        <text x="684" y="262" text-anchor="end" class="ref">(member)?</text>
+        <path d="M725 343 V160 H624" class="l-ev" marker-end="url(#f1-ev)"/>
+        <text x="737" y="248" class="ms ev">AllBalancesSettled</text>
+        <text x="737" y="264" class="q">→ Group archives (L5)</text>
+
+        <!-- Expense context -->
+        <rect x="20" y="300" width="470" height="230" rx="14" class="band-core"/>
+        <text x="36" y="322" class="cap core">EXPENSE CONTEXT · CORE · HEXAGONAL</text>
+        <rect x="40" y="345" width="210" height="165" rx="8" class="box root"/>
+        <text x="56" y="367" class="st">«Aggregate Root»</text>
+        <text x="56" y="387" class="nm">Expense</text>
+        <text x="56" y="411" class="ms">Money · ExpenseTitle</text>
+        <text x="56" y="429" class="ms">Split → Share 1..*</text>
+        <text x="56" y="447" class="ms">ExpenseStatus</text>
+        <text x="56" y="465" class="ms">ExpenseRevision 0..*</text>
+        <text x="56" y="493" class="ref">→ GroupId, MemberId</text>
+        <rect x="320" y="345" width="150" height="100" rx="8" class="box snap"/>
+        <text x="334" y="367" class="st">«snapshot»</text>
+        <text x="334" y="387" class="nm">GroupRoster</text>
+        <text x="334" y="409" class="ms">open? · currency</text>
+        <text x="334" y="427" class="ms">members · admins</text>
+        <path d="M318 398 H254" class="l-q" marker-end="url(#f1-q)"/>
+        <text x="286" y="390" text-anchor="middle" class="ref">passed in</text>
+        <path d="M250 488 H556" class="l-ev" marker-end="url(#f1-ev)"/>
+        <text x="404" y="480" text-anchor="middle" class="ms ev">ExpenseRecorded / Corrected / Removed</text>
+
+        <!-- Settlement context -->
+        <rect x="540" y="300" width="440" height="230" rx="14" class="band-core"/>
+        <text x="556" y="322" class="cap core">SETTLEMENT CONTEXT · CORE · HEXAGONAL</text>
+        <rect x="560" y="345" width="180" height="165" rx="8" class="box root"/>
+        <text x="576" y="367" class="st">«Aggregate Root»</text>
+        <text x="576" y="387" class="nm">BalanceSheet</text>
+        <text x="576" y="411" class="ms">1 per group</text>
+        <text x="576" y="429" class="ms">Balance per member</text>
+        <text x="576" y="447" class="ms">→ SettlementPlan</text>
+        <text x="576" y="465" class="q">(computed, not stored)</text>
+        <text x="576" y="493" class="ref">→ GroupId, MemberId</text>
+        <rect x="815" y="345" width="150" height="165" rx="8" class="box root"/>
+        <text x="828" y="367" class="st">«Aggregate Root»</text>
+        <text x="828" y="387" class="nm">SettlementPayment</text>
+        <text x="828" y="411" class="ms">debtor → creditor</text>
+        <text x="828" y="429" class="ms">amount: Money</text>
+        <text x="828" y="447" class="ms">PENDING → …</text>
+        <text x="828" y="493" class="ref">→ GroupId, MemberId</text>
+        <path d="M813 398 H744" class="l-ev" marker-end="url(#f1-ev)"/>
+        <text x="778" y="390" text-anchor="middle" class="ms ev">Confirmed</text>
+        <path d="M813 452 H744" class="l-q" marker-end="url(#f1-q)"/>
+        <text x="778" y="470" text-anchor="middle" class="ref">open debt?</text>
+        <text x="778" y="484" text-anchor="middle" class="ref">R17</text>
+
+        <!-- listeners -->
+        <path d="M255 530 V562" class="l-ev" marker-end="url(#f1-ev)"/>
+        <path d="M760 530 V562" class="l-ev" marker-end="url(#f1-ev)"/>
+        <rect x="20" y="566" width="960" height="58" rx="12" class="band-plain"/>
+        <text x="500" y="591" text-anchor="middle" class="cap">ACTIVITY (READ MODEL) · NOTIFICATION (GENERIC)</text>
+        <text x="500" y="611" text-anchor="middle" class="q">subscribe to every event in this picture and only listen (Conformist, context map #6 and #7)</text>
+      </svg>
+    </div>
+    <div class="legend" aria-hidden="true">
+      <span><svg viewBox="0 0 34 12"><path d="M2 6 H28" class="l-ev"/><path d="M26 2 L32 6 L26 10 z" class="mk-ev"/></svg>domain event, handled in its own transaction</span>
+      <span><svg viewBox="0 0 34 12"><path d="M2 6 H30" class="l-id"/></svg>reference by ID only</span>
+      <span><svg viewBox="0 0 34 12"><path d="M2 6 H30" class="l-q"/></svg>synchronous question or snapshot</span>
+      <span><svg viewBox="0 0 34 12"><rect x="2" y="1" width="30" height="10" rx="2" class="box root"/></svg>aggregate root</span>
+      <span><svg viewBox="0 0 34 12"><rect x="2" y="1" width="30" height="10" rx="2" class="box snap"/></svg>local copy, not an aggregate</span>
+    </div>
+    <figcaption>Each aggregate is saved in its own transaction. The only cycle, Group ↔ BalanceSheet, is split by direction: Group asks for one member's balance synchronously (R11), and BalanceSheet reports “all settled” with an event (L5).</figcaption>
+  </figure>
+</section>
+
+<!-- ============================ DECISIONS ============================ -->
+<section id="decisions">
+  <div class="intro">
+    <div class="eyebrow">Before modelling · requirements §8</div>
+    <h2>Decisions this model makes</h2>
+    <p>The requirements leave four slide conflicts and ten domain questions open. The model needs answers to most of them, so here they are as proposals. Tick one off when the team agrees, then copy it into <code>ShareWise_Requirements.md</code>, which stays the single source of truth.</p>
+    <p class="progress">Agreed: <span data-count="dec">0 of 13</span></p>
+  </div>
+
+  <div class="tablebox">
+    <table>
+      <thead><tr><th>#</th><th class="w-mid">Proposal</th><th class="w-why">Why</th><th class="ck">Agreed</th></tr></thead>
+      <tbody>
+        <tr class="grp"><td colspan="4">Slide conflicts</td></tr>
+        <tr><td class="nm">D1</td><td><b>Share is a value object.</b> ExpenseParticipant (slide 64) is dropped.</td><td>A share has no life of its own. A correction replaces the whole split, so nothing ever tracks one share over time, and two shares with the same participant and amount are interchangeable (slide 65). It matches the glossary: the participant is the member, the share is what they owe. Slide 64’s entity would only be right if a participant had its own state per expense, such as “paid back for this expense”. We settle per group.</td><td class="ck"><input type="checkbox" id="dec-d1" data-k="D1" data-g="dec" aria-label="D1 agreed"></td></tr>
+        <tr><td class="nm">D2</td><td>At least 1 participant, and <b>at least one participant who is not the payer</b> (new rule R3a).</td><td>“Alice pays Bob’s museum ticket” has one participant (Bob) but involves two people, which is what slide 64’s 2..* is after. An expense whose only participant is the payer changes no balance, so it is refused.</td><td class="ck"><input type="checkbox" id="dec-d2" data-k="D2" data-g="dec" aria-label="D2 agreed"></td></tr>
+        <tr><td class="nm">D3</td><td>Expense and Settlement store <b>MemberId</b>, not UserId.</td><td>Inside a group the person is a member, not an account (slide 40). The core stays independent of the external Identity model (ACL in the context map). Former members keep their MemberId (R13), and a placeholder member (J17) would have a MemberId without a UserId.</td><td class="ck"><input type="checkbox" id="dec-d3" data-k="D3" data-g="dec" aria-label="D3 agreed"></td></tr>
+        <tr><td class="nm">D4</td><td>“Payer belongs to the group” is checked <b>inside Expense, against a GroupRoster snapshot</b>.</td><td>Expense only holds a GroupId (rule 3). The application service loads a roster (active members, admins, open or not, currency) and passes it into <code>record()</code>, <code>correct()</code> and <code>remove()</code>. The roster is the Expense context’s own copy, fed by Group events (ACL, rule 4). In Ex4 its adapter may simply call Group’s public API; the domain code stays the same when it becomes an event-fed copy in P3.</td><td class="ck"><input type="checkbox" id="dec-d4" data-k="D4" data-g="dec" aria-label="D4 agreed"></td></tr>
+
+        <tr class="grp"><td colspan="4">Model choices</td></tr>
+        <tr><td class="nm">D5</td><td><b>BalanceSheet</b> (one per group) is an aggregate, not only a read model. New glossary term.</td><td><code>AllBalancesSettled</code> is a domain event, and domain events come from an aggregate’s public interface (slide 71). Real decisions depend on balances: leaving (R11), the payment limit (R17) and archiving (L5). “The sum is always 0” (R14) must hold after every change, which is exactly what an aggregate protects (rule 1).</td><td class="ck"><input type="checkbox" id="dec-d5" data-k="D5" data-g="dec" aria-label="D5 agreed"></td></tr>
+        <tr><td class="nm">D6</td><td><b>Invitation</b> is its own aggregate. <b>Members</b> live inside Group.</td><td>An invitation has its own lifecycle and expires on a timer. Inside Group, every invite would lock the whole group (rule 2). Members must stay inside Group because “the last admin can’t leave” (R12) has to see all admins in one transaction.</td><td class="ck"><input type="checkbox" id="dec-d6" data-k="D6" data-g="dec" aria-label="D6 agreed"></td></tr>
+        <tr><td class="nm">D7</td><td>The <b>settlement plan is computed on demand</b> and never stored.</td><td>It is derived from the current balances, so it can’t go stale after a partial payment or a reopen. This answers “plan recalculation” in §8.</td><td class="ck"><input type="checkbox" id="dec-d7" data-k="D7" data-g="dec" aria-label="D7 agreed"></td></tr>
+
+        <tr class="grp"><td colspan="4">Domain questions from §8</td></tr>
+        <tr><td class="nm">D8</td><td><b>Auto-archive only from CLOSED_FOR_SETTLEMENT.</b></td><td>In an open group the balances can reach 0 mid-trip, for example when everyone has paid back on day 2. Archiving then would end the trip. BalanceSheet raises <code>AllBalancesSettled</code> only in the settlement phase, and Group checks its own status again.</td><td class="ck"><input type="checkbox" id="dec-d8" data-k="D8" data-g="dec" aria-label="D8 agreed"></td></tr>
+        <tr><td class="nm">D9</td><td>An expense that involves a <b>former member can’t be corrected or removed</b> (new rule R7a). If everyone involved is still a member, a correction after settlement payments is fine: balances move, and the plan is recalculated.</td><td>Bob left at balance 0 (R11). Changing his share afterwards would give a non-member a debt nobody can settle. This answers “correction after a settlement payment” in §8.</td><td class="ck"><input type="checkbox" id="dec-d9" data-k="D9" data-g="dec" aria-label="D9 agreed"></td></tr>
+        <tr><td class="nm">D10</td><td>A settlement payment may not exceed the <b>debtor’s open debt or the creditor’s open credit</b> (sharpens R17).</td><td>Nobody flips from debtor to creditor, so balances always move toward 0 and <code>AllBalancesSettled</code> stays reachable. In an archived group every balance is 0, so no payment can be recorded there at all.</td><td class="ck"><input type="checkbox" id="dec-d10" data-k="D10" data-g="dec" aria-label="D10 agreed"></td></tr>
+        <tr><td class="nm">D11</td><td>A <b>rejected settlement payment stays REJECTED</b>. The debtor records a new one.</td><td>The lifecycle stays one-way (PENDING → CONFIRMED or REJECTED), and the history shows what really happened.</td><td class="ck"><input type="checkbox" id="dec-d11" data-k="D11" data-g="dec" aria-label="D11 agreed"></td></tr>
+        <tr><td class="nm">D12</td><td><b>Any active member may invite</b>, only while the group is OPEN. <b>One invitation is for one person</b> (an email or a personal link).</td><td>J3 names a member (Alice) as the actor. The statuses ACCEPTED and DECLINED (R9) only make sense for one invitee. A reusable group link would be a separate Could feature.</td><td class="ck"><input type="checkbox" id="dec-d12" data-k="D12" data-g="dec" aria-label="D12 agreed"></td></tr>
+        <tr><td class="nm">D13</td><td>A <b>former member who is invited again</b> becomes ACTIVE with the same MemberId.</td><td>Their balance was 0 when they left. One MemberId keeps their history and their BalanceSheet entry together. The late-joiner rule (R10) applies again from the new join.</td><td class="ck"><input type="checkbox" id="dec-d13" data-k="D13" data-g="dec" aria-label="D13 agreed"></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">Still open, and the model doesn’t depend on them yet: deleting a group, GDPR account deletion, and placeholder members (J17) versus R9. D3 keeps J17 possible later.</p>
+</section>
+
+<!-- ============================ VALUE OBJECTS ============================ -->
+<section id="values">
+  <div class="intro">
+    <div class="eyebrow">Workshop step 7 · Ex3.1 · slides 65, 66, 68</div>
+    <h2>Value objects</h2>
+    <p>The slide-65 test has four parts: no identity of its own, immutable, equal when all attributes are equal, and it describes or measures something. Slide 66 adds: use value objects instead of primitive types. Every row passes all four checks. The last column says what the value object guards, which is why it exists instead of a plain <code>BigDecimal</code> or <code>String</code>.</p>
+  </div>
+  <div class="tablebox">
+    <table>
+      <thead><tr><th>Value object</th><th class="w-mid">Holds</th><th class="ck">No identity</th><th class="ck">Immutable</th><th class="ck">Equal by value</th><th class="w-mid">Describes or measures</th><th class="w-why">Why a value object (what it guards)</th></tr></thead>
+      <tbody>
+        <tr class="grp"><td colspan="7">Shared kernel · Expense ∩ Settlement (context map #4b)</td></tr>
+        <tr><td class="nm">Money</td><td><code>amount: BigDecimal</code> (scale 2) + <code>Currency</code> (slide 64)</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td><td>every amount, share and balance</td><td>Exact cents, never a <code>double</code>. <code>plus()</code> and <code>minus()</code> return a new Money, like <code>MixWith</code> on slide 65. Refuses to add two different currencies.</td></tr>
+        <tr><td class="nm">Currency</td><td>ISO 4217 code, e.g. EUR</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td><td>the money of one group</td><td>One per group, fixed at creation. Every Money in a group carries it; there is no conversion (§1).</td></tr>
+        <tr><td class="nm">Typed IDs</td><td><code>GroupId</code>, <code>MemberId</code>, <code>UserId</code>, <code>ExpenseId</code>, <code>InvitationId</code>, <code>SettlementPaymentId</code>; a UUID each</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td><td>which entity is meant</td><td>The ID value itself has no identity: two GroupIds with the same UUID are the same reference. Typing stops a MemberId from being passed where a GroupId belongs. They are how aggregates point at each other (rule 3).</td></tr>
+
+        <tr class="grp"><td colspan="7">Group context</td></tr>
+        <tr><td class="nm">GroupName</td><td>text, 1–60 characters, trimmed (slide 68)</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td><td>a group</td><td>“A group always has a name, which must not be empty” (§4.3) is checked once, in the constructor.</td></tr>
+        <tr><td class="nm">GroupStatus</td><td>OPEN · CLOSED_FOR_SETTLEMENT · ARCHIVED</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td><td>where a group is in its lifecycle</td><td>Knows the allowed transitions, so a group can’t jump states and ARCHIVED stays final (L6).</td></tr>
+        <tr><td class="nm">MemberRole</td><td>ADMIN · MEMBER</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td><td>a member’s rights</td><td>Only ADMIN may close, reopen, archive, remove and promote (L1).</td></tr>
+        <tr><td class="nm">MemberStatus</td><td>ACTIVE · FORMER</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td><td>whether a member is still in</td><td>Leaving makes a member FORMER; the Member is never deleted (R13).</td></tr>
+        <tr><td class="nm">InvitationStatus</td><td>PENDING · ACCEPTED · DECLINED · EXPIRED</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td><td>where an invitation is in its lifecycle</td><td>The R9 statuses. Only PENDING can change.</td></tr>
+        <tr><td class="nm">ValidityPeriod</td><td><code>issuedAt</code>, <code>validUntil</code> = issuedAt + 7 days</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td><td>how long an invitation is valid</td><td><code>isExpiredAt(now)</code> decides expiry, so an old invitation can’t be accepted even before the timer marks it EXPIRED (R9).</td></tr>
+        <tr><td class="nm">EmailAddress</td><td>a syntactically valid address</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td><td>whom an email invitation goes to</td><td>Validated once, at the edge, instead of a raw String everywhere.</td></tr>
+        <tr><td class="nm">InvitationCode</td><td>random secret inside the personal invite link</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td><td>which link was opened</td><td>Not guessable, and compared by value when someone opens the link.</td></tr>
+
+        <tr class="grp"><td colspan="7">Expense context (core)</td></tr>
+        <tr><td class="nm">Split</td><td><code>strategy: SplitStrategy</code> + <code>shares: Share[1..*]</code></td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td><td>how an amount is divided</td><td>Built only through <code>equal()</code>, <code>exact()</code> or <code>byPercentage()</code>, and each makes the shares add up exactly to the amount, remainder cents to the first participants (R4). A broken split can’t exist.</td></tr>
+        <tr><td class="nm">Share</td><td><code>participant: MemberId</code>, <code>amount: Money</code>, plus <code>Percentage</code> for a percentage split</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td><td>what one participant owes for one expense</td><td>Decision D1. A correction replaces the shares as a whole; nothing tracks a single share over time.</td></tr>
+        <tr><td class="nm">SplitStrategy</td><td>EQUAL · EXACT · PERCENTAGE (slide 64)</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td><td>a split</td><td>Kept so the split can be shown again the way it was entered.</td></tr>
+        <tr><td class="nm">Percentage</td><td>0 &lt; p ≤ 100, two decimals (slide 68)</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td><td>a participant’s part in a percentage split</td><td>The range check lives in one place; the percentages of a split add up to 100 (R4).</td></tr>
+        <tr><td class="nm">ExpenseTitle</td><td>text, 1–80 characters</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td><td>an expense</td><td>Every expense has a title (J4 step 2).</td></tr>
+        <tr><td class="nm">ExpenseStatus</td><td>ACTIVE · CORRECTED · REMOVED (slide 64)</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td><td>where an expense is in its lifecycle</td><td>REMOVED is final in the MVP (R8). A CORRECTED expense still counts for balances (see finding F1).</td></tr>
+        <tr><td class="nm">ExpenseRevision</td><td>revision number, the previous title, amount, payer, date and split, <code>correctedBy</code>, <code>correctedAt</code>, reason</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td><td>one earlier version of an expense</td><td>A history entry never changes once written, so there is nothing to track over time (R7).</td></tr>
+        <tr><td class="nm">GroupRoster</td><td><code>groupId</code>, open?, currency, active members, admins</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td><td>the group, as the Expense context sees it</td><td>Decision D4. Its stored copy is a read model fed by Group events; what the aggregate receives is an immutable snapshot of it.</td></tr>
+
+        <tr class="grp"><td colspan="7">Settlement context (core)</td></tr>
+        <tr><td class="nm">Balance</td><td><code>member: MemberId</code>, signed <code>amount: Money</code></td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td><td>a member’s net position</td><td>+ is owed, − owes, <code>isSettled()</code> at 0 (glossary).</td></tr>
+        <tr><td class="nm">Debt</td><td><code>debtor</code>, <code>creditor</code>, <code>amount: Money</code></td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td><td>one directed amount in the plan</td><td>Keeps Balance and Debt apart, as the glossary does (“Alice has a balance of +371; David has a debt of €371 to Alice”).</td></tr>
+        <tr><td class="nm">SettlementPlan</td><td><code>debts: Debt[*]</code></td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td><td>who pays whom</td><td>Computed from balances and never stored (D7). It describes payments; it never changes a balance itself (R15).</td></tr>
+        <tr><td class="nm">ExpenseEffect</td><td><code>payer</code>, <code>amount</code>, and what each member owes</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td><td>what one expense does to balances</td><td>The ACL’s translation of Expense events. Settlement never imports Expense classes (context map #4).</td></tr>
+        <tr><td class="nm">SettlementPaymentStatus</td><td>PENDING · CONFIRMED · REJECTED</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td><td>where a payment is in its lifecycle</td><td>R16. Only PENDING can change (D11).</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ============================ ENTITIES ============================ -->
+<section id="entities">
+  <div class="intro">
+    <div class="eyebrow">Workshop step 7 · Ex3.1 · slides 66, 68</div>
+    <h2>Entities</h2>
+    <p>The slide-66 test: a unique identity that separates it from all others, state that changes over time, and it lives inside an aggregate. Five of the six are aggregate roots. Member is the only entity inside another aggregate. The struck-out row shows the slide-64 entity that fails the test.</p>
+  </div>
+  <div class="tablebox">
+    <table>
+      <thead><tr><th>Entity</th><th>Context</th><th class="ck">Unique identity</th><th class="ck">Changes over time</th><th class="w-why">Tracked one by one, because…</th><th>Lives in</th></tr></thead>
+      <tbody>
+        <tr><td class="nm">Group</td><td><span class="chip c-sup">Group</span></td><td class="ck"><span class="y">✓</span> <code>GroupId</code></td><td class="ck"><span class="y">✓</span> status, members</td><td>“Mallorca 2027” is the same group from creation to archive, whatever its status.</td><td>root of <b>Group</b></td></tr>
+        <tr><td class="nm">Member</td><td><span class="chip c-sup">Group</span></td><td class="ck"><span class="y">✓</span> <code>MemberId</code></td><td class="ck"><span class="y">✓</span> role, status</td><td>Bob is still Bob after he is promoted or leaves, and old expenses keep pointing at him (R13).</td><td>inside <b>Group</b></td></tr>
+        <tr><td class="nm">Invitation</td><td><span class="chip c-sup">Group</span></td><td class="ck"><span class="y">✓</span> <code>InvitationId</code></td><td class="ck"><span class="y">✓</span> PENDING → …</td><td>Eve accepts this particular invitation, possibly days after it was sent.</td><td>root of <b>Invitation</b></td></tr>
+        <tr><td class="nm">Expense</td><td><span class="chip c-core">Expense</span></td><td class="ck"><span class="y">✓</span> <code>ExpenseId</code></td><td class="ck"><span class="y">✓</span> content, status</td><td>The dinner is the same expense before and after its correction (R7).</td><td>root of <b>Expense</b></td></tr>
+        <tr><td class="nm">BalanceSheet</td><td><span class="chip c-core">Settlement</span></td><td class="ck"><span class="y">✓</span> <code>GroupId</code></td><td class="ck"><span class="y">✓</span> every balance</td><td>Each group’s balances change with every expense and every confirmed payment.</td><td>root of <b>BalanceSheet</b></td></tr>
+        <tr><td class="nm">SettlementPayment</td><td><span class="chip c-core">Settlement</span></td><td class="ck"><span class="y">✓</span> <code>SettlementPaymentId</code></td><td class="ck"><span class="y">✓</span> PENDING → …</td><td>The creditor confirms this particular payment later (R16).</td><td>root of <b>SettlementPayment</b></td></tr>
+        <tr class="rejected"><td class="nm">ExpenseParticipant</td><td><span class="chip c-core">Expense</span></td><td class="ck"><span class="p">◐</span> only “member X in expense Y”</td><td class="ck"><span class="n">✗</span> replaced, never changed</td><td>Nobody follows one participant entry over time. Fails the test, so it becomes the Share value object (D1).</td><td>slide 64</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">User is an entity too, but it belongs to Identity (Keycloak), which we buy (generic, slide 25). Our contexts only keep its <code>UserId</code>.</p>
+</section>
+
+<!-- ============================ AGGREGATES ============================ -->
+<section id="aggregates">
+  <div class="intro">
+    <div class="eyebrow">Workshop step 8 · Ex3.2 · slides 64, 67, 69</div>
+    <h2>Aggregates</h2>
+    <p>An aggregate is a cluster of entities and value objects owned by one root, and it is a transactional consistency boundary (slide 67). Each card lists the commands it accepts with the events they publish, the invariants it protects, and the four aggregate rules as a checklist.</p>
+    <div class="modes small q">
+      <span><span class="chip c-ok">inside</span> always true after the transaction</span>
+      <span><span class="chip c-warn">snapshot</span> checked against another aggregate’s data, which can be slightly old (rule 4)</span>
+    </div>
+  </div>
+
+  <!-- Expense -->
+  <article class="agg" id="agg-expense">
+    <div class="agg-head"><h3>Expense</h3><span class="chip c-core">Expense context · core</span><span class="q small">the slide-69 aggregate with the slide-64 conflicts resolved</span></div>
+    <figure>
+      <div class="scroll">
+        <svg viewBox="0 0 1000 560" role="img" aria-label="Expense aggregate as a UML class diagram. The Expense root holds id, groupId, recordedBy, title, date, amount, paidBy, split, status and history, and has record, correct and remove methods that return ExpenseRecorded, ExpenseCorrected and ExpenseRemoved. Inside the boundary are the value objects Split, Share, ExpenseRevision, ExpenseStatus and Money. Outside are Group and Member, referenced by ID, the GroupRoster snapshot passed into each command, and the three published events.">
+          <defs>
+            <marker id="f2-ev" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mk-ev"/></marker>
+            <marker id="f2-q" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mk-q"/></marker>
+            <marker id="f2-id" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto"><path d="M1,1 L9,5 L1,9" class="mk-id"/></marker>
+          </defs>
+          <rect x="20" y="36" width="700" height="504" rx="16" class="band-core"/>
+          <text x="40" y="60" class="cap core">EXPENSE AGGREGATE · CONSISTENCY BOUNDARY = ONE TRANSACTION (SLIDE 67)</text>
+
+          <rect x="40" y="76" width="300" height="350" rx="8" class="box root"/>
+          <path d="M40 122 H340" class="div"/>
+          <text x="190" y="96" text-anchor="middle" class="st">«Aggregate Root»</text>
+          <text x="190" y="115" text-anchor="middle" class="nm">Expense</text>
+          <text x="54" y="144" class="m">+ id: ExpenseId</text>
+          <text x="54" y="164" class="m">+ groupId: GroupId</text>
+          <text x="54" y="184" class="m">+ recordedBy: MemberId</text>
+          <text x="54" y="204" class="m">+ title: ExpenseTitle</text>
+          <text x="54" y="224" class="m">+ date: LocalDate</text>
+          <text x="54" y="244" class="m">+ amount: Money</text>
+          <text x="54" y="264" class="m">+ paidBy: MemberId</text>
+          <text x="54" y="284" class="m">+ split: Split</text>
+          <text x="54" y="304" class="m">+ status: ExpenseStatus</text>
+          <text x="54" y="324" class="m">+ history: ExpenseRevision[0..*]</text>
+          <path d="M40 338 H340" class="div"/>
+          <text x="54" y="360" class="m">+record(…): <tspan class="ev">ExpenseRecorded</tspan></text>
+          <text x="54" y="380" class="m">+correct(…): <tspan class="ev">ExpenseCorrected</tspan></text>
+          <text x="54" y="400" class="m">+remove(…): <tspan class="ev">ExpenseRemoved</tspan></text>
+
+          <rect x="390" y="76" width="310" height="112" rx="8" class="box"/>
+          <path d="M390 116 H700" class="div"/>
+          <text x="545" y="93" text-anchor="middle" class="st">«Value Object»</text>
+          <text x="545" y="110" text-anchor="middle" class="nm">Split</text>
+          <text x="404" y="138" class="m">+ strategy: SplitStrategy</text>
+          <text x="404" y="157" class="m">+ shares: Share[1..*]</text>
+          <text x="404" y="177" class="ms">equal() · exact() · byPercentage()</text>
+
+          <rect x="390" y="220" width="310" height="108" rx="8" class="box"/>
+          <path d="M390 260 H700" class="div"/>
+          <text x="545" y="237" text-anchor="middle" class="st">«Value Object»</text>
+          <text x="545" y="254" text-anchor="middle" class="nm">Share</text>
+          <text x="404" y="280" class="m">+ participant: MemberId</text>
+          <text x="404" y="298" class="m">+ amount: Money</text>
+          <text x="404" y="316" class="m">+ percentage: Percentage[0..1]</text>
+
+          <rect x="390" y="356" width="310" height="106" rx="8" class="box"/>
+          <path d="M390 396 H700" class="div"/>
+          <text x="545" y="373" text-anchor="middle" class="st">«Value Object»</text>
+          <text x="545" y="390" text-anchor="middle" class="nm">ExpenseRevision</text>
+          <text x="404" y="416" class="m">+ revision: int</text>
+          <text x="404" y="434" class="m">+ previous version (all fields)</text>
+          <text x="404" y="452" class="m">+ correctedBy · correctedAt · reason</text>
+
+          <rect x="40" y="450" width="300" height="74" rx="8" class="box"/>
+          <path d="M40 490 H340" class="div"/>
+          <text x="190" y="467" text-anchor="middle" class="st">«Value Object»</text>
+          <text x="190" y="484" text-anchor="middle" class="nm">ExpenseStatus</text>
+          <text x="190" y="511" text-anchor="middle" class="m">ACTIVE | CORRECTED | REMOVED</text>
+
+          <rect x="390" y="478" width="310" height="50" rx="8" class="box"/>
+          <text x="404" y="498" class="st">«Value Object» Money · shared kernel</text>
+          <text x="404" y="517" class="ms">+ amount: BigDecimal · + currency: Currency</text>
+
+          <polygon points="340,132 346,128 352,132 346,136" class="dia"/>
+          <path d="M352 132 H388" class="l-comp"/>
+          <text x="383" y="126" text-anchor="end" class="ref">1</text>
+          <polygon points="545,188 549,194 545,200 541,194" class="dia"/>
+          <path d="M545 200 V218" class="l-comp"/>
+          <text x="553" y="213" class="ref">1..*</text>
+          <polygon points="340,410 346,406 352,410 346,414" class="dia"/>
+          <path d="M352 410 H388" class="l-comp"/>
+          <text x="385" y="403" text-anchor="end" class="ref">0..*</text>
+          <polygon points="190,426 194,432 190,438 186,432" class="dia"/>
+          <path d="M190 438 V448" class="l-comp"/>
+          <text x="198" y="445" class="ref">1</text>
+
+          <rect x="750" y="76" width="235" height="104" rx="12" class="band-sup"/>
+          <text x="766" y="98" class="cap sup">GROUP CONTEXT</text>
+          <text x="766" y="122" class="m">Group  ← GroupId</text>
+          <text x="766" y="142" class="m">Member ← MemberId</text>
+          <text x="766" y="166" class="q">referenced by ID only (rule 3)</text>
+          <path d="M722 128 H746" class="l-id" marker-end="url(#f2-id)"/>
+
+          <rect x="750" y="230" width="235" height="124" rx="12" class="box snap"/>
+          <text x="766" y="252" class="st">«snapshot» from the ACL</text>
+          <text x="766" y="272" class="nm">GroupRoster</text>
+          <text x="766" y="296" class="ms">open? · currency</text>
+          <text x="766" y="314" class="ms">activeMembers · admins</text>
+          <text x="766" y="338" class="q">passed into each command (D4)</text>
+          <path d="M748 292 H724" class="l-q" marker-end="url(#f2-q)"/>
+
+          <rect x="750" y="400" width="235" height="124" rx="12" class="box evbox"/>
+          <text x="766" y="422" class="cap ev">PUBLISHES (SLIDE 71)</text>
+          <text x="766" y="448" class="m ev">ExpenseRecorded</text>
+          <text x="766" y="468" class="m ev">ExpenseCorrected</text>
+          <text x="766" y="488" class="m ev">ExpenseRemoved</text>
+          <text x="766" y="512" class="q">→ Settlement, Activity, Notification</text>
+          <path d="M722 462 H746" class="l-ev" marker-end="url(#f2-ev)"/>
+        </svg>
+      </div>
+      <figcaption>Slide 64 with our decisions applied: ExpenseParticipant becomes the Share value object (D1), UserId becomes MemberId (D3), and <code>correct()</code> takes the whole new version. Everything inside the blue boundary is saved in one transaction. Group data only comes in as a snapshot.</figcaption>
+    </figure>
+    <div class="agg-cols">
+      <div>
+        <div class="label">Commands → events</div>
+        <ul class="cmd">
+          <li><code>record(roster, recorder, title, date, amount, payer, split)</code> → <code class="ev">ExpenseRecorded</code> <span class="rule">J4</span></li>
+          <li><code>correct(roster, by, newVersion, reason)</code> → <code class="ev">ExpenseCorrected</code>, old version into history <span class="rule">J5</span></li>
+          <li><code>remove(roster, by)</code> → <code class="ev">ExpenseRemoved</code> <span class="rule">J6</span></li>
+        </ul>
+        <div class="label">Invariants it protects</div>
+        <ul class="check">
+          <li><span class="rule">R1</span> The amount is positive.</li>
+          <li><span class="rule">R3</span> At least one participant, nobody twice.</li>
+          <li><span class="rule">R3a</span> At least one participant is not the payer (D2).</li>
+          <li><span class="rule">R4</span> The shares add up exactly to the amount; guaranteed by Split.</li>
+          <li><span class="rule">G2</span> The amount is in the group’s currency.</li>
+          <li><span class="rule">R7</span> A correction moves the old version into the history; nothing is overwritten.</li>
+          <li><span class="rule">R8</span> A removed expense can’t be corrected; REMOVED is final.</li>
+          <li class="snapshot"><span class="rule">R2 R3</span> Payer and participants are active members (snapshot).</li>
+          <li class="snapshot"><span class="rule">R5 L2 L3</span> Only while the group is OPEN (snapshot).</li>
+          <li class="snapshot"><span class="rule">R6</span> Only the recorder, the payer or an admin corrects or removes (snapshot).</li>
+          <li class="snapshot"><span class="rule">R7a</span> No correction or removal if a former member is involved (snapshot, D9).</li>
+        </ul>
+        <p class="small q">R10 (late joiners) needs no check of its own: it follows from R2 and R3, because a participant must be a member when the expense is recorded.</p>
+      </div>
+      <div>
+        <div class="label">Aggregate rules (slide 67)</div>
+        <ul class="check">
+          <li><b>1 · Invariants via the root.</b> Split and Share can only be replaced through <code>correct()</code>. There is no setter for amount or shares.</li>
+          <li><b>2 · Small.</b> One expense, its shares and its few earlier versions. A “GroupExpenses” aggregate holding the whole list would make every new expense in a group wait for every other one.</li>
+          <li><b>3 · By ID.</b> <code>GroupId</code> and <code>MemberId</code> for recorder, payer and participants. No Group or Member objects.</li>
+          <li><b>4 · Eventual.</b> Balances change in Settlement after the event, in a separate transaction.</li>
+        </ul>
+        <div class="label">Changed from slide 64</div>
+        <ul class="plain small">
+          <li>ExpenseParticipant entity → Share value object (D1)</li>
+          <li>UserId → MemberId (D3)</li>
+          <li>2..* participants → 1..* plus R3a (D2)</li>
+          <li><code>correct(newAmount)</code> → <code>correct(newVersion)</code>, because J5 also changes payer, participants and split (F5)</li>
+        </ul>
+        <p class="note">The revision list is a natural event-sourcing candidate (slide 72: an append-only history). For Ex4 a plain list is enough.</p>
+      </div>
+    </div>
+  </article>
+
+  <!-- Group context figure -->
+  <figure>
+    <div class="scroll">
+      <svg viewBox="0 0 1000 450" role="img" aria-label="Group context, two aggregates. Invitation holds id, groupId, invitedBy, email, code, validity and status, with issue, accept, decline and expire. Group holds id, name, currency, status and Member entities, with create, join, leave, removeMember, promoteToAdmin, closeGroupForSettlement, reopenGroup and archiveGroup. InvitationAccepted from Invitation triggers join on Group.">
+        <defs>
+          <marker id="f3-ev" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mk-ev"/></marker>
+          <marker id="f3-id" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto"><path d="M1,1 L9,5 L1,9" class="mk-id"/></marker>
+        </defs>
+        <rect x="20" y="36" width="320" height="364" rx="16" class="band-sup"/>
+        <text x="36" y="60" class="cap sup">INVITATION AGGREGATE</text>
+        <rect x="36" y="74" width="288" height="302" rx="8" class="box root"/>
+        <path d="M36 120 H324" class="div"/>
+        <text x="180" y="94" text-anchor="middle" class="st">«Aggregate Root»</text>
+        <text x="180" y="113" text-anchor="middle" class="nm">Invitation</text>
+        <text x="50" y="142" class="m">+ id: InvitationId</text>
+        <text x="50" y="162" class="m">+ groupId: GroupId</text>
+        <text x="50" y="182" class="m">+ invitedBy: MemberId</text>
+        <text x="50" y="202" class="m">+ email: EmailAddress[0..1]</text>
+        <text x="50" y="222" class="m">+ code: InvitationCode</text>
+        <text x="50" y="242" class="m">+ validity: ValidityPeriod</text>
+        <text x="50" y="262" class="m">+ status: InvitationStatus</text>
+        <path d="M36 276 H324" class="div"/>
+        <text x="50" y="298" class="ms">+issue(…): <tspan class="ev">MemberInvited</tspan></text>
+        <text x="50" y="318" class="ms">+accept(user, now): <tspan class="ev">InvitationAccepted</tspan></text>
+        <text x="50" y="338" class="ms">+decline(now): <tspan class="ev">InvitationDeclined</tspan></text>
+        <text x="50" y="358" class="ms">+expire(now): <tspan class="q">no event</tspan></text>
+
+        <path d="M340 200 H446" class="l-id" marker-end="url(#f3-id)"/>
+        <text x="395" y="192" text-anchor="middle" class="ref">GroupId</text>
+        <path d="M340 330 H446" class="l-ev" marker-end="url(#f3-ev)"/>
+        <text x="395" y="306" text-anchor="middle" class="ms ev">Invitation</text>
+        <text x="395" y="321" text-anchor="middle" class="ms ev">Accepted</text>
+        <text x="395" y="348" text-anchor="middle" class="q">→ join()</text>
+
+        <rect x="450" y="36" width="530" height="394" rx="16" class="band-sup"/>
+        <text x="466" y="60" class="cap sup">GROUP AGGREGATE</text>
+        <rect x="466" y="74" width="320" height="340" rx="8" class="box root"/>
+        <path d="M466 120 H786" class="div"/>
+        <text x="626" y="94" text-anchor="middle" class="st">«Aggregate Root»</text>
+        <text x="626" y="113" text-anchor="middle" class="nm">Group</text>
+        <text x="480" y="142" class="m">+ id: GroupId</text>
+        <text x="480" y="162" class="m">+ name: GroupName</text>
+        <text x="480" y="182" class="m">+ currency: Currency</text>
+        <text x="480" y="202" class="m">+ status: GroupStatus</text>
+        <text x="480" y="222" class="m">+ members: Member[1..*]</text>
+        <path d="M466 236 H786" class="div"/>
+        <text x="480" y="258" class="ms">+create(…): <tspan class="ev">GroupCreated, MemberJoined</tspan></text>
+        <text x="480" y="276" class="ms">+join(user): <tspan class="ev">MemberJoined</tspan></text>
+        <text x="480" y="294" class="ms">+leave(member, balance): <tspan class="ev">MemberLeft</tspan></text>
+        <text x="480" y="312" class="ms">+removeMember(…, balance): <tspan class="ev">MemberRemoved</tspan></text>
+        <text x="480" y="330" class="ms">+promoteToAdmin(…): <tspan class="ev">MemberPromoted</tspan></text>
+        <text x="480" y="348" class="ms">+closeGroupForSettlement(admin):</text>
+        <text x="496" y="366" class="ms ev">GroupClosedForSettlement</text>
+        <text x="480" y="384" class="ms">+reopenGroup(admin): <tspan class="ev">GroupReopened</tspan></text>
+        <text x="480" y="402" class="ms">+archiveGroup(…): <tspan class="ev">GroupArchived</tspan></text>
+
+        <polygon points="786,150 792,146 798,150 792,154" class="dia"/>
+        <path d="M798 150 H806" class="l-comp"/>
+        <rect x="806" y="74" width="166" height="154" rx="8" class="box"/>
+        <path d="M806 120 H972" class="div"/>
+        <text x="889" y="94" text-anchor="middle" class="st">«Entity»</text>
+        <text x="889" y="113" text-anchor="middle" class="nm">Member</text>
+        <text x="818" y="142" class="ref">+ id: MemberId</text>
+        <text x="818" y="160" class="ref">+ userId: UserId</text>
+        <text x="818" y="178" class="ref">+ role: MemberRole</text>
+        <text x="818" y="196" class="ref">+ status: MemberStatus</text>
+        <text x="818" y="214" class="ref">+ joinedAt: Instant</text>
+        <text x="818" y="252" class="q">ACTIVE ⇄ FORMER (R13)</text>
+        <text x="818" y="272" class="q">R12 needs every admin</text>
+        <text x="818" y="290" class="q">in this boundary</text>
+      </svg>
+    </div>
+    <figcaption>Invitation and Group are separate aggregates in the same context. Accepting an invitation and joining the group are two transactions, linked by <code>InvitationAccepted</code>. Members stay inside Group so the last-admin rule (R12) is checked in one transaction.</figcaption>
+  </figure>
+
+  <!-- Group -->
+  <article class="agg" id="agg-group">
+    <div class="agg-head"><h3>Group</h3><span class="chip c-sup">Group context · supporting</span><span class="q small">layered architecture (slide 76), but its rules are real business rules, so it still gets an aggregate</span></div>
+    <div class="agg-cols">
+      <div>
+        <div class="label">Commands → events</div>
+        <ul class="cmd">
+          <li><code>create(name, currency, creator)</code> → <code class="ev">GroupCreated</code>, <code class="ev">MemberJoined</code> (ADMIN) <span class="rule">J2</span></li>
+          <li><code>join(user)</code> after <code>InvitationAccepted</code> → <code class="ev">MemberJoined</code> <span class="rule">J3 J9</span></li>
+          <li><code>leave(member, balance)</code> → <code class="ev">MemberLeft</code> <span class="rule">J10</span></li>
+          <li><code>removeMember(admin, member, balance)</code> → <code class="ev">MemberRemoved</code> <span class="rule">J11</span></li>
+          <li><code>promoteToAdmin(admin, member)</code> → <code class="ev">MemberPromoted</code> <span class="rule">J10</span></li>
+          <li><code>closeGroupForSettlement(admin)</code> → <code class="ev">GroupClosedForSettlement</code> (slide 35 name) <span class="rule">J12</span></li>
+          <li><code>reopenGroup(admin)</code> → <code class="ev">GroupReopened</code> <span class="rule">J12b</span></li>
+          <li><code>archiveGroup(admin, allSettled)</code>, or automatically on <code>AllBalancesSettled</code> → <code class="ev">GroupArchived</code> <span class="rule">J13</span></li>
+        </ul>
+        <div class="label">Invariants it protects</div>
+        <ul class="check">
+          <li><span class="rule">G1</span> The name is not empty (GroupName).</li>
+          <li><span class="rule">G2</span> Exactly one currency, fixed at creation.</li>
+          <li><span class="rule">L1</span> Only admins close, reopen, archive, remove and promote.</li>
+          <li><span class="rule">L6</span> Only allowed status transitions; ARCHIVED is final.</li>
+          <li><span class="rule">G3</span> Joining only while OPEN; a user is at most once an active member.</li>
+          <li><span class="rule">R12</span> The last admin can’t leave while others remain.</li>
+          <li><span class="rule">R13</span> Leaving or removal makes a member FORMER; nobody is deleted.</li>
+          <li class="snapshot"><span class="rule">R11</span> Leave or remove only at balance 0 (balance from Settlement, passed in).</li>
+          <li class="snapshot"><span class="rule">L4 L5</span> Manual archive only when all balances are 0 (answer from Settlement); automatic archive reacts to the event, and only while CLOSED (D8).</li>
+        </ul>
+      </div>
+      <div>
+        <div class="label">Aggregate rules (slide 67)</div>
+        <ul class="check">
+          <li><b>1 · Invariants via the root.</b> Role checks and transitions happen in Group’s methods. There is no <code>updateStatus()</code> (slide 35).</li>
+          <li><b>2 · Small.</b> Members (a few dozen at most) are inside because R12 needs all admins at once. Invitations, expenses and balances are not.</li>
+          <li><b>3 · By ID.</b> <code>UserId</code> (Identity) and the invitation’s ID. Nothing from Expense or Settlement.</li>
+          <li><b>4 · Eventual.</b> Expense and Settlement learn about members and status through events; archiving reacts to <code>AllBalancesSettled</code>.</li>
+        </ul>
+        <p class="note">Why the balance is a parameter: Group must not know how balances are calculated. The application service asks Settlement’s public interface (OHS) and hands the answer to <code>leave()</code>. The answer can be a few milliseconds old; see finding F7.</p>
+      </div>
+    </div>
+  </article>
+
+  <!-- Invitation -->
+  <article class="agg" id="agg-invitation">
+    <div class="agg-head"><h3>Invitation</h3><span class="chip c-sup">Group context · supporting</span><span class="chip c-ok dec">Decision D6, D12</span></div>
+    <div class="agg-cols">
+      <div>
+        <div class="label">Commands → events</div>
+        <ul class="cmd">
+          <li><code>issue(groupId, inviter, email?, now)</code> → <code class="ev">MemberInvited</code>. The application service first checks that the inviter is an active member and the group is OPEN (D12). <span class="rule">J3</span></li>
+          <li><code>accept(user, now)</code> → <code class="ev">InvitationAccepted</code>, which makes Group call <code>join()</code> <span class="rule">J3 J9</span></li>
+          <li><code>decline(now)</code> → <code class="ev">InvitationDeclined</code> <span class="rule">J3</span></li>
+          <li><code>expire(now)</code> by the system timer → no event; nobody needs to react</li>
+        </ul>
+        <div class="label">Invariants it protects</div>
+        <ul class="check">
+          <li><span class="rule">R9</span> Valid for 7 days (ValidityPeriod).</li>
+          <li><span class="rule">R9</span> Only a PENDING invitation can be accepted or declined; the other statuses are final.</li>
+          <li><span class="rule">R9</span> It can’t be accepted after <code>validUntil</code>, even if the timer hasn’t marked it yet.</li>
+        </ul>
+      </div>
+      <div>
+        <div class="label">Aggregate rules (slide 67)</div>
+        <ul class="check">
+          <li><b>1 · Invariants via the root.</b> Status only changes through <code>accept()</code>, <code>decline()</code> and <code>expire()</code>.</li>
+          <li><b>2 · Small.</b> One invitation for one invitee. It doesn’t contain the group.</li>
+          <li><b>3 · By ID.</b> <code>GroupId</code>, the inviter’s <code>MemberId</code>, the accepting <code>UserId</code>.</li>
+          <li><b>4 · Eventual.</b> Joining happens in Group, in its own transaction. If the group was closed in between, the join is refused and the invitee is told (J3 alternative).</li>
+        </ul>
+      </div>
+    </div>
+  </article>
+
+  <!-- Settlement context figure -->
+  <figure>
+    <div class="scroll">
+      <svg viewBox="0 0 1000 480" role="img" aria-label="Settlement context, two aggregates. BalanceSheet holds groupId, currency, balances and a settlement-phase flag, with methods to apply, replace and revert expense effects, apply confirmed payments, and start or end the settlement phase, plus queries for a balance, final balances and the settlement plan. It contains Balance values, uses ExpenseEffect and makes SettlementPlan. SettlementPayment holds id, groupId, debtor, creditor, amount, status and timestamps, with record, confirm and reject. SettlementPayment asks BalanceSheet for open debt and credit, and its Confirmed event updates BalanceSheet.">
+        <defs>
+          <marker id="f4-ev" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mk-ev"/></marker>
+          <marker id="f4-q" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mk-q"/></marker>
+          <marker id="f4-id" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto"><path d="M1,1 L9,5 L1,9" class="mk-id"/></marker>
+        </defs>
+        <rect x="20" y="36" width="560" height="424" rx="16" class="band-core"/>
+        <text x="36" y="60" class="cap core">BALANCESHEET AGGREGATE · ONE PER GROUP</text>
+        <rect x="36" y="74" width="310" height="370" rx="8" class="box root"/>
+        <path d="M36 120 H346" class="div"/>
+        <text x="191" y="94" text-anchor="middle" class="st">«Aggregate Root»</text>
+        <text x="191" y="113" text-anchor="middle" class="nm">BalanceSheet</text>
+        <text x="50" y="142" class="m">+ groupId: GroupId (its identity)</text>
+        <text x="50" y="162" class="m">+ currency: Currency</text>
+        <text x="50" y="182" class="m">+ balances: Balance[*]</text>
+        <text x="50" y="202" class="m">+ inSettlementPhase: boolean</text>
+        <path d="M36 216 H346" class="div"/>
+        <text x="50" y="238" class="ms">+applyExpense(effect)</text>
+        <text x="50" y="256" class="ms">+replaceExpense(before, after)</text>
+        <text x="50" y="274" class="ms">+revertExpense(effect)</text>
+        <text x="50" y="292" class="ms">+applySettlementPayment(…):</text>
+        <text x="66" y="310" class="ms ev">AllBalancesSettled?</text>
+        <text x="50" y="328" class="ms">+startSettlementPhase():</text>
+        <text x="66" y="346" class="ms ev">AllBalancesSettled?</text>
+        <text x="50" y="364" class="ms">+endSettlementPhase()</text>
+        <path d="M36 378 H346" class="div"/>
+        <text x="332" y="398" text-anchor="end" class="st">queries</text>
+        <text x="50" y="398" class="ms">balanceOf(member)</text>
+        <text x="50" y="416" class="ms">calculateFinalBalances()</text>
+        <text x="50" y="434" class="ms">suggestSettlementPlan()</text>
+
+        <polygon points="346,130 352,126 358,130 352,134" class="dia"/>
+        <path d="M358 130 H388" class="l-comp"/>
+        <rect x="390" y="74" width="176" height="96" rx="8" class="box"/>
+        <path d="M390 114 H566" class="div"/>
+        <text x="478" y="91" text-anchor="middle" class="st">«Value Object»</text>
+        <text x="478" y="108" text-anchor="middle" class="nm">Balance</text>
+        <text x="402" y="136" class="ms">+ member: MemberId</text>
+        <text x="402" y="156" class="ms">+ amount: Money (±)</text>
+
+        <path d="M346 250 H386" class="l-id" marker-end="url(#f4-id)"/>
+        <text x="368" y="243" text-anchor="middle" class="ref">uses</text>
+        <rect x="390" y="196" width="176" height="110" rx="8" class="box"/>
+        <path d="M390 236 H566" class="div"/>
+        <text x="478" y="213" text-anchor="middle" class="st">«Value Object»</text>
+        <text x="478" y="230" text-anchor="middle" class="nm">ExpenseEffect</text>
+        <text x="402" y="258" class="ms">+ payer: MemberId</text>
+        <text x="402" y="276" class="ms">+ amount: Money</text>
+        <text x="402" y="294" class="ms">+ owed: MemberId→Money</text>
+
+        <path d="M346 390 H386" class="l-id" marker-end="url(#f4-id)"/>
+        <text x="368" y="383" text-anchor="middle" class="ref">makes</text>
+        <rect x="390" y="332" width="176" height="112" rx="8" class="box snap"/>
+        <path d="M390 372 H566" class="div"/>
+        <text x="478" y="349" text-anchor="middle" class="st">«Value Object»</text>
+        <text x="478" y="366" text-anchor="middle" class="nm">SettlementPlan</text>
+        <text x="402" y="394" class="ms">+ debts: Debt[*]</text>
+        <text x="402" y="414" class="q">computed on demand,</text>
+        <text x="402" y="432" class="q">never stored (D7)</text>
+
+        <path d="M680 200 H584" class="l-q" marker-end="url(#f4-q)"/>
+        <text x="630" y="178" text-anchor="middle" class="ref">open debt</text>
+        <text x="630" y="191" text-anchor="middle" class="ref">&amp; credit?</text>
+        <text x="630" y="218" text-anchor="middle" class="ref">R17</text>
+        <path d="M680 354 H584" class="l-ev" marker-end="url(#f4-ev)"/>
+        <text x="630" y="330" text-anchor="middle" class="ms ev">Payment</text>
+        <text x="630" y="345" text-anchor="middle" class="ms ev">Confirmed</text>
+
+        <rect x="680" y="36" width="300" height="424" rx="16" class="band-core"/>
+        <text x="696" y="60" class="cap core">SETTLEMENTPAYMENT AGGREGATE</text>
+        <rect x="696" y="74" width="268" height="330" rx="8" class="box root"/>
+        <path d="M696 120 H964" class="div"/>
+        <text x="830" y="94" text-anchor="middle" class="st">«Aggregate Root»</text>
+        <text x="830" y="113" text-anchor="middle" class="nm">SettlementPayment</text>
+        <text x="710" y="142" class="ms">+ id: SettlementPaymentId</text>
+        <text x="710" y="162" class="ms">+ groupId: GroupId</text>
+        <text x="710" y="182" class="ms">+ debtor: MemberId</text>
+        <text x="710" y="202" class="ms">+ creditor: MemberId</text>
+        <text x="710" y="222" class="ms">+ amount: Money</text>
+        <text x="710" y="242" class="ms">+ status: SettlementPaymentStatus</text>
+        <text x="710" y="262" class="ms">+ recordedAt · decidedAt</text>
+        <path d="M696 276 H964" class="div"/>
+        <text x="710" y="298" class="ms">+record(…, openDebt, openCredit):</text>
+        <text x="726" y="316" class="ms ev">SettlementPaymentRecorded</text>
+        <text x="710" y="336" class="ms">+confirm(by):</text>
+        <text x="726" y="354" class="ms ev">SettlementPaymentConfirmed</text>
+        <text x="710" y="374" class="ms">+reject(by, reason):</text>
+        <text x="726" y="392" class="ms ev">SettlementPaymentRejected</text>
+      </svg>
+    </div>
+    <figcaption>BalanceSheet keeps one balance per member and nothing else. Payments live in their own aggregate and only reach the balances once the creditor confirms them. The plan is a value that BalanceSheet computes; it is never saved.</figcaption>
+  </figure>
+
+  <!-- BalanceSheet -->
+  <article class="agg" id="agg-balancesheet">
+    <div class="agg-head"><h3>BalanceSheet</h3><span class="chip c-core">Settlement context · core</span><span class="chip c-ok dec">Decision D5 · new glossary term: the balances of all members of one group</span></div>
+    <div class="agg-cols">
+      <div>
+        <div class="label">Commands (each triggered by an event) → events</div>
+        <ul class="cmd">
+          <li>on <code>GroupCreated</code>: a new BalanceSheet for the group; on <code>MemberJoined</code>: <code>addMember(m)</code> at 0</li>
+          <li>on <code>ExpenseRecorded</code>: <code>applyExpense(effect)</code> credits the payer, debits each participant</li>
+          <li>on <code>ExpenseCorrected</code>: <code>replaceExpense(before, after)</code> reverts the old effect and applies the new one</li>
+          <li>on <code>ExpenseRemoved</code>: <code>revertExpense(effect)</code></li>
+          <li>on <code>SettlementPaymentConfirmed</code>: <code>applySettlementPayment(debtor, creditor, amount)</code> → <code class="ev">AllBalancesSettled</code> if this was the last one</li>
+          <li>on <code>GroupClosedForSettlement</code>: <code>startSettlementPhase()</code> → <code class="ev">AllBalancesSettled</code> at once if every balance is already 0</li>
+          <li>on <code>GroupReopened</code>: <code>endSettlementPhase()</code></li>
+        </ul>
+        <div class="label">Queries</div>
+        <ul class="plain small">
+          <li><code>balanceOf(member)</code> for leaving and removal (R11)</li>
+          <li><code>openDebtOf()</code> and <code>openCreditOf()</code> for the payment limit (R17, D10)</li>
+          <li><code>calculateFinalBalances()</code> for the close summary, J12 step 2 (slide 35 name)</li>
+          <li><code>suggestSettlementPlan()</code> → SettlementPlan (R15, J7)</li>
+        </ul>
+      </div>
+      <div>
+        <div class="label">Invariants it protects</div>
+        <ul class="check">
+          <li><span class="rule">R14</span> The sum of all balances is 0 after every change.</li>
+          <li><span class="rule">R14</span> Only confirmed settlement payments count; it only listens to <code>…Confirmed</code>.</li>
+          <li><span class="rule">G2</span> One currency.</li>
+          <li><span class="rule">L5</span> Raises <code>AllBalancesSettled</code> when the group is in its settlement phase and every balance is 0 (D8).</li>
+          <li><span class="rule">R15</span> Making a plan never changes a balance: the plan is computed and returned, not applied.</li>
+        </ul>
+        <div class="label">Aggregate rules (slide 67)</div>
+        <ul class="check">
+          <li><b>1 · Invariants via the root.</b> Balances change only through apply and revert methods. There is no <code>setBalance()</code>.</li>
+          <li><b>2 · Small.</b> One Money per member. No expense list and no payment list; it keeps only their net effect.</li>
+          <li><b>3 · By ID.</b> <code>GroupId</code> and <code>MemberId</code>. It never sees an Expense object, only the ExpenseEffect its ACL builds from the event.</li>
+          <li><b>4 · Eventual.</b> It is updated by events from Expense and SettlementPayment, and its own event archives the Group.</li>
+        </ul>
+        <p class="note">(note:) Every event must be applied exactly once. The event-listener adapter remembers which event IDs it has processed (an “inbox”). This becomes important in P3, when RabbitMQ may deliver an event twice.</p>
+      </div>
+    </div>
+  </article>
+
+  <!-- SettlementPayment -->
+  <article class="agg" id="agg-payment">
+    <div class="agg-head"><h3>SettlementPayment</h3><span class="chip c-core">Settlement context · core</span><span class="q small">an entity on slide 68</span></div>
+    <div class="agg-cols">
+      <div>
+        <div class="label">Commands → events</div>
+        <ul class="cmd">
+          <li><code>record(group, debtor, creditor, amount, openDebt, openCredit)</code> → <code class="ev">SettlementPaymentRecorded</code> (slide 35: <code>recordSettlementPayment()</code>) <span class="rule">J8</span></li>
+          <li><code>confirm(by)</code> → <code class="ev">SettlementPaymentConfirmed</code> <span class="rule">J8</span></li>
+          <li><code>reject(by, reason)</code> → <code class="ev">SettlementPaymentRejected</code> <span class="rule">J8</span></li>
+        </ul>
+        <div class="label">Invariants it protects</div>
+        <ul class="check">
+          <li>The amount is positive, in the group’s currency, and debtor and creditor are different members.</li>
+          <li><span class="rule">R16</span> Only the creditor confirms or rejects.</li>
+          <li><span class="rule">R16</span> Only PENDING can change; CONFIRMED and REJECTED are final (D11).</li>
+          <li class="snapshot"><span class="rule">R17</span> At most the debtor’s open debt and the creditor’s open credit (D10). BalanceSheet answers when the payment is recorded, and again when it is confirmed.</li>
+        </ul>
+        <p class="small q">MVP without confirmation (R16 is a Should): <code>record()</code> creates the payment as CONFIRMED right away and raises both events.</p>
+      </div>
+      <div>
+        <div class="label">Aggregate rules (slide 67)</div>
+        <ul class="check">
+          <li><b>1 · Invariants via the root.</b> Status changes only through <code>confirm()</code> and <code>reject()</code>, and only the creditor may call them.</li>
+          <li><b>2 · Small.</b> One payment. Keeping all payments inside BalanceSheet would grow it forever and hold it while a payment waits days for confirmation.</li>
+          <li><b>3 · By ID.</b> <code>GroupId</code> and the MemberIds of debtor and creditor.</li>
+          <li><b>4 · Eventual.</b> BalanceSheet applies the payment after <code>SettlementPaymentConfirmed</code>, in its own transaction.</li>
+        </ul>
+      </div>
+    </div>
+  </article>
+
+  <div class="tablebox">
+    <table>
+      <thead><tr><th>Not an aggregate</th><th>Context</th><th class="w-why">Why not</th></tr></thead>
+      <tbody>
+        <tr><td class="nm">User</td><td><span class="chip c-gen">Identity</span></td><td>Owned by Keycloak, which we buy (slide 25). We only keep the UserId.</td></tr>
+        <tr><td class="nm">GroupRoster</td><td><span class="chip c-core">Expense</span></td><td>A local read model of the group; the Expense aggregate receives it as a value (D4). No commands, no invariants of its own.</td></tr>
+        <tr><td class="nm">SettlementPlan</td><td><span class="chip c-core">Settlement</span></td><td>A computed value (D7).</td></tr>
+        <tr><td class="nm">ActivityEntry</td><td><span class="chip c-sup">Activity</span></td><td>A read-only projection of events, a CQRS read model (slide 78). Nothing can change it directly.</td></tr>
+        <tr><td class="nm">Notification</td><td><span class="chip c-gen">Notification</span></td><td>Generic delivery. At most a transaction script (slide 60) that turns events into emails.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ============================ LIFECYCLES ============================ -->
+<section id="lifecycles">
+  <div class="intro">
+    <div class="eyebrow">States</div>
+    <h2>Lifecycles</h2>
+    <p>Four aggregates and the Member entity move through states. Only the methods on the arrows change a state; there is no <code>updateStatus()</code> (slide 35).</p>
+  </div>
+  <figure>
+    <div class="scroll">
+      <svg viewBox="0 0 1000 600" role="img" aria-label="State machines. Group: OPEN to CLOSED_FOR_SETTLEMENT by closeGroupForSettlement, back by reopenGroup, then to ARCHIVED by AllBalancesSettled or archiveGroup. Expense: ACTIVE to CORRECTED by correct, either to REMOVED by remove. Member: ACTIVE to FORMER by leave or removeMember at balance 0, back to ACTIVE by joining again. Invitation: PENDING to ACCEPTED, DECLINED or EXPIRED. SettlementPayment: PENDING to CONFIRMED or REJECTED.">
+        <defs>
+          <marker id="f5-tr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mk-tr"/></marker>
+        </defs>
+        <!-- Group -->
+        <text x="20" y="66" class="nm">Group</text>
+        <text x="20" y="84" class="q">Group aggregate</text>
+        <rect x="150" y="53" width="90" height="34" rx="17" class="pill"/>
+        <text x="195" y="74" text-anchor="middle" class="m">OPEN</text>
+        <rect x="440" y="53" width="220" height="34" rx="17" class="pill"/>
+        <text x="550" y="74" text-anchor="middle" class="m">CLOSED_FOR_SETTLEMENT</text>
+        <rect x="850" y="53" width="120" height="34" rx="17" class="pill"/>
+        <rect x="853" y="56" width="114" height="28" rx="14" class="pill-in"/>
+        <text x="910" y="74" text-anchor="middle" class="m">ARCHIVED</text>
+        <path d="M240 70 H436" class="l-tr" marker-end="url(#f5-tr)"/>
+        <text x="338" y="46" text-anchor="middle" class="ms">closeGroupForSettlement()</text>
+        <text x="338" y="62" text-anchor="middle" class="q">admin · L1, L4</text>
+        <path d="M500 88 C 470 128, 240 128, 200 91" class="l-tr" marker-end="url(#f5-tr)"/>
+        <text x="350" y="137" text-anchor="middle" class="ms">reopenGroup() · admin (L6)</text>
+        <path d="M660 70 H846" class="l-tr" marker-end="url(#f5-tr)"/>
+        <text x="753" y="46" text-anchor="middle" class="ms">AllBalancesSettled (auto)</text>
+        <text x="753" y="62" text-anchor="middle" class="q">or archiveGroup() at all 0 · L5</text>
+
+        <!-- Expense -->
+        <text x="20" y="190" class="nm">Expense</text>
+        <text x="20" y="208" class="q">Expense aggregate</text>
+        <rect x="150" y="177" width="90" height="34" rx="17" class="pill"/>
+        <text x="195" y="198" text-anchor="middle" class="m">ACTIVE</text>
+        <rect x="440" y="177" width="140" height="34" rx="17" class="pill"/>
+        <text x="510" y="198" text-anchor="middle" class="m">CORRECTED</text>
+        <rect x="850" y="177" width="120" height="34" rx="17" class="pill"/>
+        <rect x="853" y="180" width="114" height="28" rx="14" class="pill-in"/>
+        <text x="910" y="198" text-anchor="middle" class="m">REMOVED</text>
+        <path d="M240 194 H436" class="l-tr" marker-end="url(#f5-tr)"/>
+        <text x="338" y="186" text-anchor="middle" class="ms">correct() · R5–R7</text>
+        <path d="M492 177 C 492 146, 540 146, 540 174" class="l-tr" marker-end="url(#f5-tr)"/>
+        <text x="484" y="156" text-anchor="end" class="ms">correct() again</text>
+        <path d="M580 194 H846" class="l-tr" marker-end="url(#f5-tr)"/>
+        <text x="713" y="186" text-anchor="middle" class="ms">remove() · R8</text>
+        <path d="M195 211 C 260 262, 840 262, 905 214" class="l-tr" marker-end="url(#f5-tr)"/>
+        <text x="550" y="268" text-anchor="middle" class="ms">remove() · soft delete, kept in history</text>
+
+        <!-- Member -->
+        <text x="20" y="318" class="nm">Member</text>
+        <text x="20" y="336" class="q">entity inside Group</text>
+        <rect x="150" y="305" width="90" height="34" rx="17" class="pill"/>
+        <text x="195" y="326" text-anchor="middle" class="m">ACTIVE</text>
+        <rect x="440" y="305" width="110" height="34" rx="17" class="pill"/>
+        <text x="495" y="326" text-anchor="middle" class="m">FORMER</text>
+        <path d="M240 322 H436" class="l-tr" marker-end="url(#f5-tr)"/>
+        <text x="338" y="298" text-anchor="middle" class="ms">leave() / removeMember()</text>
+        <text x="338" y="314" text-anchor="middle" class="q">only at balance 0 (R11)</text>
+        <path d="M495 340 C 470 380, 240 380, 198 343" class="l-tr" marker-end="url(#f5-tr)"/>
+        <text x="345" y="389" text-anchor="middle" class="ms">join() again · same MemberId (D13)</text>
+        <text x="590" y="326" class="q">FORMER members stay visible in old expenses (R13)</text>
+
+        <!-- Invitation -->
+        <text x="20" y="440" class="nm">Invitation</text>
+        <text x="20" y="458" class="q">Invitation aggregate</text>
+        <rect x="150" y="432" width="104" height="30" rx="15" class="pill"/>
+        <text x="202" y="451" text-anchor="middle" class="m">PENDING</text>
+        <rect x="440" y="397" width="120" height="30" rx="15" class="pill"/>
+        <rect x="443" y="400" width="114" height="24" rx="12" class="pill-in"/>
+        <text x="500" y="416" text-anchor="middle" class="m">ACCEPTED</text>
+        <rect x="440" y="432" width="120" height="30" rx="15" class="pill"/>
+        <rect x="443" y="435" width="114" height="24" rx="12" class="pill-in"/>
+        <text x="500" y="451" text-anchor="middle" class="m">DECLINED</text>
+        <rect x="440" y="467" width="120" height="30" rx="15" class="pill"/>
+        <rect x="443" y="470" width="114" height="24" rx="12" class="pill-in"/>
+        <text x="500" y="486" text-anchor="middle" class="m">EXPIRED</text>
+        <path d="M254 441 C 330 441, 360 412, 436 412" class="l-tr" marker-end="url(#f5-tr)"/>
+        <path d="M254 447 H436" class="l-tr" marker-end="url(#f5-tr)"/>
+        <path d="M254 453 C 330 453, 360 482, 436 482" class="l-tr" marker-end="url(#f5-tr)"/>
+        <text x="578" y="416" class="ms">accept() before validUntil (R9)</text>
+        <text x="578" y="451" class="ms">decline()</text>
+        <text x="578" y="486" class="ms">7 days passed · timer, no event</text>
+
+        <!-- SettlementPayment -->
+        <text x="20" y="548" class="nm">SettlementPayment</text>
+        <text x="20" y="566" class="q">Settlement</text>
+        <rect x="150" y="540" width="104" height="30" rx="15" class="pill"/>
+        <text x="202" y="559" text-anchor="middle" class="m">PENDING</text>
+        <rect x="440" y="520" width="130" height="30" rx="15" class="pill"/>
+        <rect x="443" y="523" width="124" height="24" rx="12" class="pill-in"/>
+        <text x="505" y="539" text-anchor="middle" class="m">CONFIRMED</text>
+        <rect x="440" y="560" width="130" height="30" rx="15" class="pill"/>
+        <rect x="443" y="563" width="124" height="24" rx="12" class="pill-in"/>
+        <text x="505" y="579" text-anchor="middle" class="m">REJECTED</text>
+        <path d="M254 550 C 330 550, 360 535, 436 535" class="l-tr" marker-end="url(#f5-tr)"/>
+        <path d="M254 560 C 330 560, 360 575, 436 575" class="l-tr" marker-end="url(#f5-tr)"/>
+        <text x="588" y="539" class="ms">confirm() · creditor only (R16)</text>
+        <text x="588" y="579" class="ms">reject() · creditor; debtor records a new one (D11)</text>
+      </svg>
+    </div>
+    <figcaption>Double border = final state. An ARCHIVED group, a REMOVED expense and a decided invitation or payment never change again. Member is the only lifecycle that can go back to its start (D13).</figcaption>
+  </figure>
+</section>
+
+<!-- ============================ EVENTS ============================ -->
+<section id="events">
+  <div class="intro">
+    <div class="eyebrow">Workshop step 9 · Ex3.3 · slides 64, 71</div>
+    <h2>Domain events</h2>
+    <p>A domain event is a message about something significant that happened in the business, and it is part of an aggregate’s public interface (slide 71). The four check columns test each event: past-tense name, raised by exactly one aggregate method, at least one subscriber, and a payload that lets subscribers react without calling back.</p>
+  </div>
+  <div class="tablebox">
+    <table>
+      <thead><tr><th>Event</th><th class="w-mid">Raised by</th><th class="w-mid">Payload</th><th class="w-why">Who reacts, and how</th><th>Journey</th><th class="ck" title="Past-tense name">Past</th><th class="ck" title="Raised by one aggregate method">Aggr.</th><th class="ck" title="Has at least one subscriber">Subs.</th><th class="ck" title="Payload is self-contained">Self-cont.</th></tr></thead>
+      <tbody>
+        <tr class="grp"><td colspan="9">Group context</td></tr>
+        <tr><td class="nm ev">GroupCreated</td><td><code>Group.create()</code></td><td>groupId, name, currency, creator</td><td>Expense creates the GroupRoster · Settlement creates the BalanceSheet · Activity</td><td>J2</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td></tr>
+        <tr><td class="nm ev">MemberJoined</td><td><code>Group.create()</code>, <code>Group.join()</code></td><td>groupId, memberId, userId, role, joinedAt</td><td>Expense adds a possible participant · Settlement adds a balance of 0 · Activity · Notification (“Bob joined”)</td><td>J2 J3 J9</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td></tr>
+        <tr><td class="nm ev">MemberLeft</td><td><code>Group.leave()</code></td><td>groupId, memberId</td><td>Expense removes them from the roster · Activity · Notification</td><td>J10</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td></tr>
+        <tr><td class="nm ev">MemberRemoved</td><td><code>Group.removeMember()</code></td><td>groupId, memberId, removedBy</td><td>Expense removes them from the roster · Activity · Notification to the removed member</td><td>J11</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td></tr>
+        <tr><td class="nm ev">MemberPromoted</td><td><code>Group.promoteToAdmin()</code></td><td>groupId, memberId, promotedBy</td><td>Expense updates the admin list it needs for R6 · Activity</td><td>J10</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td></tr>
+        <tr><td class="nm ev">GroupClosedForSettlement</td><td><code>Group.closeGroupForSettlement()</code></td><td>groupId, closedBy, closedAt</td><td>Expense blocks recording, correcting and removing (R5) · Settlement starts the settlement phase · Notification sends “your final amount” · Activity</td><td>J12</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td></tr>
+        <tr><td class="nm ev">GroupReopened</td><td><code>Group.reopenGroup()</code></td><td>groupId, reopenedBy</td><td>Expense unblocks · Settlement ends the settlement phase · Notification · Activity</td><td>J12b</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td></tr>
+        <tr><td class="nm ev">GroupArchived</td><td><code>Group.archiveGroup()</code></td><td>groupId, AUTO or MANUAL</td><td>Expense marks the roster final · Activity · Notification</td><td>J13</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td></tr>
+        <tr><td class="nm ev">MemberInvited</td><td><code>Invitation.issue()</code></td><td>invitationId, groupId, invitedBy, email?, validUntil</td><td>Notification sends the email or link · Activity</td><td>J3</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td></tr>
+        <tr><td class="nm ev">InvitationAccepted</td><td><code>Invitation.accept()</code></td><td>invitationId, groupId, userId</td><td>Group calls <code>join()</code>, which raises MemberJoined (same context, own transaction)</td><td>J3 J9</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td></tr>
+        <tr><td class="nm ev">InvitationDeclined</td><td><code>Invitation.decline()</code></td><td>invitationId, groupId</td><td>Notification tells the inviter · Activity</td><td>J3</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td></tr>
+
+        <tr class="grp"><td colspan="9">Expense context</td></tr>
+        <tr><td class="nm ev">ExpenseRecorded</td><td><code>Expense.record()</code></td><td>expenseId, groupId, recordedBy, title, payer, amount, shares</td><td>Settlement: <code>applyExpense()</code> · Notification to the participants · Activity</td><td>J4</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td></tr>
+        <tr><td class="nm ev">ExpenseCorrected</td><td><code>Expense.correct()</code></td><td>expenseId, groupId, revision, correctedBy, reason, <b>before</b> and <b>after</b> (payer, amount, shares)</td><td>Settlement: <code>replaceExpense(before, after)</code>; this works without asking Expense because both versions travel with the event · Notification to old and new participants · Activity</td><td>J5</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td></tr>
+        <tr><td class="nm ev">ExpenseRemoved</td><td><code>Expense.remove()</code></td><td>expenseId, groupId, removedBy, payer, amount, shares</td><td>Settlement: <code>revertExpense()</code> · Notification · Activity</td><td>J6</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td></tr>
+
+        <tr class="grp"><td colspan="9">Settlement context</td></tr>
+        <tr><td class="nm ev">SettlementPaymentRecorded</td><td><code>SettlementPayment.record()</code></td><td>paymentId, groupId, debtor, creditor, amount</td><td>Notification asks the creditor to confirm · Activity</td><td>J8</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td></tr>
+        <tr><td class="nm ev">SettlementPaymentConfirmed</td><td><code>SettlementPayment.confirm()</code></td><td>paymentId, groupId, debtor, creditor, amount</td><td>BalanceSheet: <code>applySettlementPayment()</code> · Notification to the debtor · Activity</td><td>J8</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td></tr>
+        <tr><td class="nm ev">SettlementPaymentRejected</td><td><code>SettlementPayment.reject()</code></td><td>paymentId, groupId, debtor, reason</td><td>Notification to the debtor · Activity</td><td>J8</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td></tr>
+        <tr><td class="nm ev">AllBalancesSettled</td><td><code>BalanceSheet.applySettlementPayment()</code> or <code>startSettlementPhase()</code></td><td>groupId</td><td>Group archives itself, only if CLOSED (D8), and raises GroupArchived · Activity</td><td>J13</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td><td class="ck y">✓</td></tr>
+
+        <tr class="grp"><td colspan="9">Listed in requirements §7, not modelled as our events</td></tr>
+        <tr class="rejected"><td class="nm">UserRegistered</td><td>Keycloak (external)</td><td>userId</td><td>Nobody in the MVP: Group takes the UserId from the login token when someone joins.</td><td>J1</td><td class="ck y">✓</td><td class="ck n">✗</td><td class="ck n">✗</td><td class="ck y">✓</td></tr>
+        <tr class="rejected"><td class="nm">PaymentReminderSent</td><td>none</td><td>debtor, creditor</td><td>Should feature. It changes no domain state, so it is a Notification command (“send reminder”), not a domain event (F8).</td><td>J14</td><td class="ck y">✓</td><td class="ck n">✗</td><td class="ck p">◐</td><td class="ck y">✓</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <figure>
+    <div class="scroll">
+      <svg viewBox="0 0 1000 400" role="img" aria-label="Two event chains. First: Expense.correct in transaction 1 publishes ExpenseCorrected; BalanceSheet.replaceExpense in transaction 2 changes Alice by minus 5, Bob by plus 15, Carol by minus 5 and David by minus 5; Activity and Notification also receive the event. Second: SettlementPayment.confirm for Carol to Eve 72 euros in transaction 1 publishes Confirmed; BalanceSheet.applySettlementPayment in transaction 2 brings every balance to 0 and publishes AllBalancesSettled; Group.archiveGroup in transaction 3 sets status ARCHIVED.">
+        <defs>
+          <marker id="f6-ev" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mk-ev"/></marker>
+        </defs>
+        <text x="20" y="26" class="nm">J5 · the dinner is corrected from €180 to €200</text>
+        <rect x="20" y="40" width="300" height="128" rx="10" class="band-core"/>
+        <text x="36" y="62" class="cap core">EXPENSE CONTEXT</text>
+        <text x="304" y="62" text-anchor="end" class="ref">tx 1</text>
+        <text x="36" y="88" class="m b">Expense.correct()</text>
+        <text x="36" y="110">version 1 (€180) moves to the history</text>
+        <text x="36" y="130">status becomes CORRECTED</text>
+        <text x="36" y="150" class="q">roster: group OPEN · Bob is the payer (R6)</text>
+        <path d="M320 100 H436" class="l-ev" marker-end="url(#f6-ev)"/>
+        <text x="378" y="90" text-anchor="middle" class="ms ev">ExpenseCorrected</text>
+        <path d="M378 100 V206 H436" class="l-ev" marker-end="url(#f6-ev)"/>
+        <rect x="440" y="40" width="540" height="128" rx="10" class="band-core"/>
+        <text x="456" y="62" class="cap core">SETTLEMENT CONTEXT</text>
+        <text x="964" y="62" text-anchor="end" class="ref">tx 2</text>
+        <text x="456" y="88" class="m b">BalanceSheet.replaceExpense(before, after)</text>
+        <text x="456" y="110">reverts the €180 effect, applies the €200 one</text>
+        <text x="456" y="130">Bob paid €20 more and owes €5 more</text>
+        <text x="456" y="150" class="q">the changes add up to 0, so R14 holds</text>
+        <text x="812" y="88" class="cap">BALANCE CHANGE</text>
+        <text x="812" y="108" class="ms">Alice</text><text x="964" y="108" text-anchor="end" class="ms">−5</text>
+        <text x="812" y="124" class="ms">Bob</text><text x="964" y="124" text-anchor="end" class="ms b">+15</text>
+        <text x="812" y="140" class="ms">Carol</text><text x="964" y="140" text-anchor="end" class="ms">−5</text>
+        <text x="812" y="156" class="ms">David</text><text x="964" y="156" text-anchor="end" class="ms">−5</text>
+        <rect x="440" y="186" width="540" height="40" rx="10" class="band-plain"/>
+        <text x="456" y="211" class="cap">ACTIVITY · NOTIFICATION</text>
+        <text x="640" y="211">feed entry · Alice, Bob, Carol, David notified</text>
+
+        <text x="20" y="268" class="nm">J8 → J13 · the last settlement payment archives the group</text>
+        <rect x="20" y="282" width="230" height="110" rx="10" class="band-core"/>
+        <text x="36" y="304" class="cap core">SETTLEMENT CONTEXT</text>
+        <text x="236" y="304" text-anchor="end" class="ref">tx 1</text>
+        <text x="36" y="330" class="m b">SettlementPayment.confirm()</text>
+        <text x="36" y="352">Carol → Eve €72</text>
+        <text x="36" y="372" class="q">Eve is the creditor (R16)</text>
+        <path d="M250 337 H316" class="l-ev" marker-end="url(#f6-ev)"/>
+        <text x="283" y="327" text-anchor="middle" class="ms ev">Confirmed</text>
+        <rect x="320" y="282" width="310" height="110" rx="10" class="band-core"/>
+        <text x="336" y="304" class="cap core">SETTLEMENT CONTEXT</text>
+        <text x="616" y="304" text-anchor="end" class="ref">tx 2</text>
+        <text x="336" y="330" class="m b">BalanceSheet.applySettlementPayment()</text>
+        <text x="336" y="352">Carol 0 · Eve 0 → every balance is 0</text>
+        <text x="336" y="372" class="q">group is closed, so it raises the event</text>
+        <path d="M630 337 H736" class="l-ev" marker-end="url(#f6-ev)"/>
+        <text x="683" y="318" text-anchor="middle" class="ms ev">AllBalances</text>
+        <text x="683" y="331" text-anchor="middle" class="ms ev">Settled</text>
+        <rect x="740" y="282" width="240" height="110" rx="10" class="band-sup"/>
+        <text x="756" y="304" class="cap sup">GROUP CONTEXT</text>
+        <text x="966" y="304" text-anchor="end" class="ref">tx 3</text>
+        <text x="756" y="330" class="m b">Group.archiveGroup()</text>
+        <text x="756" y="352">CLOSED → ARCHIVED (D8)</text>
+        <text x="756" y="372" class="q">publishes GroupArchived</text>
+      </svg>
+    </div>
+    <figcaption>Each box is one transaction on one aggregate, and events carry the change to the next one (slide 67, rule 4). Numbers from the Mallorca example. Inside the monolith the next transaction starts right after the commit; in P3 the same chain runs over RabbitMQ.</figcaption>
+  </figure>
+</section>
+
+<!-- ============================ FEATURES ============================ -->
+<section id="features">
+  <div class="intro">
+    <div class="eyebrow">Coverage · requirements §2 (MoSCoW)</div>
+    <h2>Functionality checklist</h2>
+    <p>Every feature from the MoSCoW list, traced to the aggregate method that implements it, the events it raises and the rules it must keep. The last column is for Ex4: tick a feature once it works in the modulith.</p>
+    <p class="progress">Built: <span data-count="built">0 of 15</span></p>
+  </div>
+  <div class="tablebox">
+    <table>
+      <thead><tr><th>Feature</th><th>Journey</th><th class="w-mid">Aggregate · method</th><th class="w-mid">Events</th><th>Rules</th><th>Model</th><th class="ck">Built (Ex4)</th></tr></thead>
+      <tbody>
+        <tr class="grp"><td colspan="7">Must</td></tr>
+        <tr><td>Register and log in</td><td>J1</td><td>Identity (Keycloak). Group takes the UserId from the login token</td><td>UserRegistered (external)</td><td>–</td><td><span class="chip c-ok">covered</span> <span class="chip c-gen">bought</span></td><td class="ck"><input type="checkbox" id="built-f1" data-k="F01" data-g="built" aria-label="Register and log in built"></td></tr>
+        <tr><td>Create a group (name, currency)</td><td>J2</td><td><code>Group.create()</code></td><td>GroupCreated, MemberJoined</td><td class="rule">G1 G2</td><td><span class="chip c-ok">covered</span></td><td class="ck"><input type="checkbox" id="built-f2" data-k="F02" data-g="built" aria-label="Create a group built"></td></tr>
+        <tr><td>Invite by link or email, join, decline</td><td>J3 J9</td><td><code>Invitation.issue() / accept() / decline()</code> → <code>Group.join()</code></td><td>MemberInvited, InvitationAccepted, InvitationDeclined, MemberJoined</td><td class="rule">R9 R10 G3</td><td><span class="chip c-ok">covered</span></td><td class="ck"><input type="checkbox" id="built-f3" data-k="F03" data-g="built" aria-label="Invite and join built"></td></tr>
+        <tr><td>Record an expense: equal, exact, percentage</td><td>J4</td><td><code>Expense.record()</code> with <code>Split.equal() / exact() / byPercentage()</code></td><td>ExpenseRecorded</td><td class="rule">R1–R5 R3a</td><td><span class="chip c-ok">covered</span></td><td class="ck"><input type="checkbox" id="built-f4" data-k="F04" data-g="built" aria-label="Record an expense built"></td></tr>
+        <tr><td>Correct an expense, keeping its history</td><td>J5</td><td><code>Expense.correct()</code></td><td>ExpenseCorrected</td><td class="rule">R5–R7 R7a</td><td><span class="chip c-ok">covered</span></td><td class="ck"><input type="checkbox" id="built-f5" data-k="F05" data-g="built" aria-label="Correct an expense built"></td></tr>
+        <tr><td>Remove an expense (soft delete)</td><td>J6</td><td><code>Expense.remove()</code></td><td>ExpenseRemoved</td><td class="rule">R5 R6 R8</td><td><span class="chip c-ok">covered</span></td><td class="ck"><input type="checkbox" id="built-f6" data-k="F06" data-g="built" aria-label="Remove an expense built"></td></tr>
+        <tr><td>Balances + simplified settlement plan</td><td>J7</td><td><code>BalanceSheet.balanceOf()</code>, <code>suggestSettlementPlan()</code> (queries)</td><td>none</td><td class="rule">R14 R15</td><td><span class="chip c-ok">covered</span></td><td class="ck"><input type="checkbox" id="built-f7" data-k="F07" data-g="built" aria-label="Balances and plan built"></td></tr>
+        <tr><td>Record a settlement payment</td><td>J8</td><td><code>SettlementPayment.record()</code></td><td>SettlementPaymentRecorded</td><td class="rule">R16 R17</td><td><span class="chip c-ok">covered</span></td><td class="ck"><input type="checkbox" id="built-f8" data-k="F08" data-g="built" aria-label="Record a settlement payment built"></td></tr>
+        <tr><td>Leave a group / remove a member, only at balance 0</td><td>J10 J11</td><td><code>Group.leave() / removeMember()</code> + <code>BalanceSheet.balanceOf()</code></td><td>MemberLeft, MemberRemoved</td><td class="rule">R11–R13</td><td><span class="chip c-ok">covered</span></td><td class="ck"><input type="checkbox" id="built-f9" data-k="F09" data-g="built" aria-label="Leave or remove built"></td></tr>
+        <tr><td>Promote a member to admin</td><td>J10</td><td><code>Group.promoteToAdmin()</code></td><td>MemberPromoted</td><td class="rule">R12</td><td><span class="chip c-ok">covered</span></td><td class="ck"><input type="checkbox" id="built-f10" data-k="F10" data-g="built" aria-label="Promote built"></td></tr>
+        <tr><td>Close a group for settlement, reopen it</td><td>J12</td><td><code>Group.closeGroupForSettlement() / reopenGroup()</code></td><td>GroupClosedForSettlement, GroupReopened</td><td class="rule">L1–L4 L6</td><td><span class="chip c-ok">covered</span></td><td class="ck"><input type="checkbox" id="built-f11" data-k="F11" data-g="built" aria-label="Close and reopen built"></td></tr>
+        <tr><td>Archive a group (automatically or manually)</td><td>J13</td><td><code>BalanceSheet</code> raises AllBalancesSettled → <code>Group.archiveGroup()</code></td><td>AllBalancesSettled, GroupArchived</td><td class="rule">L4 L5</td><td><span class="chip c-ok">covered</span></td><td class="ck"><input type="checkbox" id="built-f12" data-k="F12" data-g="built" aria-label="Archive built"></td></tr>
+
+        <tr class="grp"><td colspan="7">Should</td></tr>
+        <tr><td>Creditor confirms or rejects a settlement payment</td><td>J8</td><td><code>SettlementPayment.confirm() / reject()</code></td><td>SettlementPaymentConfirmed, …Rejected</td><td class="rule">R16</td><td><span class="chip c-ok">covered</span></td><td class="ck"><input type="checkbox" id="built-f13" data-k="F13" data-g="built" aria-label="Confirm payment built"></td></tr>
+        <tr><td>Activity feed</td><td>J16</td><td>Activity read model: one entry per event</td><td>consumes all</td><td>–</td><td><span class="chip c-ok">covered</span> <span class="chip c-plain">no aggregate</span></td><td class="ck"><input type="checkbox" id="built-f14" data-k="F14" data-g="built" aria-label="Activity feed built"></td></tr>
+        <tr><td>Notifications</td><td>several</td><td>Notification listens to events</td><td>consumes many</td><td>–</td><td><span class="chip c-ok">covered</span> <span class="chip c-plain">no aggregate</span></td><td class="ck"><input type="checkbox" id="built-f15" data-k="F15" data-g="built" aria-label="Notifications built"></td></tr>
+        <tr><td>Payment reminders</td><td>J14</td><td>Notification command “send reminder” (F8)</td><td>–</td><td>–</td><td><span class="chip c-warn">open</span></td><td class="ck q">–</td></tr>
+
+        <tr class="grp"><td colspan="7">Could</td></tr>
+        <tr><td>Placeholder members without an account</td><td>J17</td><td>Prepared: a Member with a MemberId but no UserId (D3). Conflicts with R9</td><td>–</td><td class="rule">R9</td><td><span class="chip c-warn">prepared</span></td><td class="ck q">–</td></tr>
+        <tr><td>Restore a removed expense</td><td>J6</td><td>Would be <code>Expense.restore()</code> → ExpenseRestored. REMOVED is final in the MVP</td><td>–</td><td class="rule">R8</td><td><span class="chip c-warn">prepared</span></td><td class="ck q">–</td></tr>
+        <tr><td>Recurring expenses</td><td>J15</td><td>–</td><td>–</td><td>–</td><td><span class="chip c-plain">not modelled</span></td><td class="ck q">–</td></tr>
+        <tr><td>Categories + statistics</td><td>–</td><td>Would be a Category value object on Expense plus a read model</td><td>–</td><td>–</td><td><span class="chip c-plain">not modelled</span></td><td class="ck q">–</td></tr>
+        <tr><td>Comments on expenses</td><td>–</td><td>–</td><td>–</td><td>–</td><td><span class="chip c-plain">not modelled</span></td><td class="ck q">–</td></tr>
+        <tr><td>CSV/PDF export of an archived group</td><td>J13</td><td>A read model; no domain change</td><td>–</td><td>–</td><td><span class="chip c-plain">not modelled</span></td><td class="ck q">–</td></tr>
+
+        <tr class="grp"><td colspan="7">Won’t (this semester)</td></tr>
+        <tr><td colspan="5">Multi-currency and exchange rates · real payment transfer · receipt OCR · multiple payers per expense · offline mode</td><td><span class="chip c-plain">out of scope</span></td><td class="ck q">–</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ============================ RULES ============================ -->
+<section id="rules">
+  <div class="intro">
+    <div class="eyebrow">Coverage · requirements §4</div>
+    <h2>Rule checklist</h2>
+    <p>Every rule from the requirements has exactly one home, plus two new rules (R3a, R7a) and three that existed without a number (G1–G3).</p>
+    <div class="modes small q">
+      <span><span class="chip c-ok">inside</span> the aggregate guarantees it in its own transaction</span>
+      <span><span class="chip c-warn">snapshot</span> checked against another aggregate’s data, which can lag</span>
+      <span><span class="chip c-ev">event</span> a reaction in a separate transaction</span>
+      <span><span class="chip c-core">by construction</span> impossible to break by design</span>
+    </div>
+  </div>
+  <div class="tablebox">
+    <table>
+      <thead><tr><th>Rule</th><th class="w-why">In business words</th><th>Home</th><th>How it is enforced</th><th class="ck">Placed</th></tr></thead>
+      <tbody>
+        <tr class="grp"><td colspan="5">Group lifecycle (answers DDD slide 7)</td></tr>
+        <tr><td class="nm">L1</td><td>Only admins may close a group, reopen it or archive it.</td><td>Group</td><td><span class="chip c-ok">inside</span> MemberRole check</td><td class="ck y">✓</td></tr>
+        <tr><td class="nm">L2</td><td>While the group is closed, no expense can be recorded.</td><td>Expense</td><td><span class="chip c-warn">snapshot</span> GroupRoster says open or not</td><td class="ck y">✓</td></tr>
+        <tr><td class="nm">L3</td><td>While the group is closed, no expense can be corrected or removed.</td><td>Expense</td><td><span class="chip c-warn">snapshot</span> GroupRoster</td><td class="ck y">✓</td></tr>
+        <tr><td class="nm">L4</td><td>Closing does not need balances of 0; archiving does.</td><td>Group</td><td><span class="chip c-ok">inside</span> for closing · <span class="chip c-warn">snapshot</span> Settlement’s answer for archiving</td><td class="ck y">✓</td></tr>
+        <tr><td class="nm">L5</td><td>The group is archived automatically when the last balance reaches 0.</td><td>BalanceSheet → Group</td><td><span class="chip c-ev">event</span> AllBalancesSettled, only in the settlement phase (D8)</td><td class="ck y">✓</td></tr>
+        <tr><td class="nm">L6</td><td>A closed group can be reopened; ARCHIVED is final.</td><td>Group</td><td><span class="chip c-ok">inside</span> GroupStatus transitions</td><td class="ck y">✓</td></tr>
+
+        <tr class="grp"><td colspan="5">Expenses</td></tr>
+        <tr><td class="nm">R1</td><td>The amount of an expense is positive.</td><td>Expense</td><td><span class="chip c-ok">inside</span></td><td class="ck y">✓</td></tr>
+        <tr><td class="nm">R2</td><td>The payer is a member of the group when the expense is recorded.</td><td>Expense</td><td><span class="chip c-warn">snapshot</span> GroupRoster</td><td class="ck y">✓</td></tr>
+        <tr><td class="nm">R3</td><td>Every participant is a member; at least one participant.</td><td>Expense</td><td><span class="chip c-ok">inside</span> count, no duplicates · <span class="chip c-warn">snapshot</span> membership</td><td class="ck y">✓</td></tr>
+        <tr><td class="nm">R3a <span class="chip c-ok dec">new</span></td><td>At least one participant is someone other than the payer.</td><td>Expense</td><td><span class="chip c-ok">inside</span></td><td class="ck y">✓</td></tr>
+        <tr><td class="nm">R4</td><td>The shares add up exactly to the amount; percentages to 100 %; remainder cents to the first participants.</td><td>Split</td><td><span class="chip c-core">by construction</span> only valid splits can be built</td><td class="ck y">✓</td></tr>
+        <tr><td class="nm">R5</td><td>Expenses are recorded, corrected or removed only while the group is OPEN.</td><td>Expense</td><td><span class="chip c-warn">snapshot</span> GroupRoster</td><td class="ck y">✓</td></tr>
+        <tr><td class="nm">R6</td><td>The recorder, the payer or an admin may correct or remove an expense.</td><td>Expense</td><td><span class="chip c-warn">snapshot</span> admins in GroupRoster</td><td class="ck y">✓</td></tr>
+        <tr><td class="nm">R7</td><td>A correction never overwrites: the old version stays in the history, status CORRECTED.</td><td>Expense</td><td><span class="chip c-ok">inside</span> ExpenseRevision</td><td class="ck y">✓</td></tr>
+        <tr><td class="nm">R7a <span class="chip c-ok dec">new</span></td><td>An expense that involves a former member can’t be corrected or removed.</td><td>Expense</td><td><span class="chip c-warn">snapshot</span> GroupRoster</td><td class="ck y">✓</td></tr>
+        <tr><td class="nm">R8</td><td>Removing is a soft delete; the expense stops counting but stays visible.</td><td>Expense, then BalanceSheet</td><td><span class="chip c-ok">inside</span> status REMOVED · <span class="chip c-ev">event</span> revertExpense()</td><td class="ck y">✓</td></tr>
+
+        <tr class="grp"><td colspan="5">Membership</td></tr>
+        <tr><td class="nm">R9</td><td>Joining only through a valid invitation, which expires after 7 days.</td><td>Invitation, then Group</td><td><span class="chip c-ok">inside</span> ValidityPeriod · <span class="chip c-ev">event</span> InvitationAccepted → join()</td><td class="ck y">✓</td></tr>
+        <tr><td class="nm">R10</td><td>Late joiners only share in expenses recorded after they joined.</td><td>Expense</td><td><span class="chip c-core">by construction</span> follows from R2 and R3</td><td class="ck y">✓</td></tr>
+        <tr><td class="nm">R11</td><td>A member can leave, or be removed, only at balance 0.</td><td>Group</td><td><span class="chip c-warn">snapshot</span> balance from Settlement, passed in</td><td class="ck y">✓</td></tr>
+        <tr><td class="nm">R12</td><td>The last admin can’t leave while other members remain.</td><td>Group</td><td><span class="chip c-ok">inside</span></td><td class="ck y">✓</td></tr>
+        <tr><td class="nm">R13</td><td>Former members stay visible in old expenses.</td><td>Group</td><td><span class="chip c-ok">inside</span> MemberStatus FORMER</td><td class="ck y">✓</td></tr>
+        <tr><td class="nm">G1</td><td>A group always has a name, which is not empty.</td><td>GroupName</td><td><span class="chip c-core">by construction</span></td><td class="ck y">✓</td></tr>
+        <tr><td class="nm">G2</td><td>A group has exactly one currency, fixed at creation.</td><td>Group, Money</td><td><span class="chip c-ok">inside</span> Group · <span class="chip c-core">by construction</span> Money refuses mixed currencies</td><td class="ck y">✓</td></tr>
+        <tr><td class="nm">G3</td><td>Joining is only possible while the group is OPEN, and a user is at most once an active member.</td><td>Group</td><td><span class="chip c-ok">inside</span></td><td class="ck y">✓</td></tr>
+
+        <tr class="grp"><td colspan="5">Balances and settlement</td></tr>
+        <tr><td class="nm">R14</td><td>Balance = paid − owed shares ± confirmed payments; the sum of all balances is always 0.</td><td>BalanceSheet</td><td><span class="chip c-ok">inside</span></td><td class="ck y">✓</td></tr>
+        <tr><td class="nm">R15</td><td>The plan needs few payments and never changes anyone’s balance.</td><td>SettlementPlan</td><td><span class="chip c-core">by construction</span> computed, never applied · wording, see F2</td><td class="ck y">✓</td></tr>
+        <tr><td class="nm">R16</td><td>The debtor records a payment; the creditor confirms it; only confirmed payments count.</td><td>SettlementPayment, then BalanceSheet</td><td><span class="chip c-ok">inside</span> · <span class="chip c-ev">event</span> only …Confirmed reaches the balances</td><td class="ck y">✓</td></tr>
+        <tr><td class="nm">R17</td><td>A payment can’t be larger than the debtor’s open debt (and the creditor’s open credit, D10).</td><td>SettlementPayment</td><td><span class="chip c-warn">snapshot</span> BalanceSheet’s answer, same context, checked again on confirm</td><td class="ck y">✓</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ============================ REPLAY ============================ -->
+<section id="replay">
+  <div class="intro">
+    <div class="eyebrow">Proof · requirements §6</div>
+    <h2>Mallorca replay</h2>
+    <p>The reference example played through BalanceSheet one event at a time, with the apply, replace and revert methods above (verified by script, 17.10). Every row sums to 0 (R14), the values after step 11 match the requirements, and the last confirmation raises <code>AllBalancesSettled</code>.</p>
+  </div>
+  <div class="tablebox">
+    <table>
+      <thead><tr><th class="num">#</th><th>Event that reaches BalanceSheet</th><th class="num">Alice</th><th class="num">Bob</th><th class="num">Carol</th><th class="num">David</th><th class="num">Eve</th><th class="num">Σ</th></tr></thead>
+      <tbody>
+        <tr><td class="num">0</td><td>GroupCreated, 4 × MemberJoined</td><td class="num">0</td><td class="num">0</td><td class="num">0</td><td class="num">0</td><td class="num q">–</td><td class="num">0</td></tr>
+        <tr><td class="num">1</td><td>ExpenseRecorded · Hotel €900, Alice, equal A B C D</td><td class="num">+675</td><td class="num">−225</td><td class="num">−225</td><td class="num">−225</td><td class="num q">–</td><td class="num">0</td></tr>
+        <tr><td class="num">2</td><td>ExpenseRecorded · Dinner €180, Bob, equal A B C D</td><td class="num">+630</td><td class="num">−90</td><td class="num">−270</td><td class="num">−270</td><td class="num q">–</td><td class="num">0</td></tr>
+        <tr class="hl"><td class="num">3</td><td><b>ExpenseCorrected</b> · Dinner €180 → €200</td><td class="num">+625</td><td class="num">−75</td><td class="num">−275</td><td class="num">−275</td><td class="num q">–</td><td class="num">0</td></tr>
+        <tr><td class="num">4</td><td>ExpenseRecorded · Rental car €420, Carol, equal A C D</td><td class="num">+485</td><td class="num">−75</td><td class="num">+5</td><td class="num">−415</td><td class="num q">–</td><td class="num">0</td></tr>
+        <tr><td class="num">5</td><td>ExpenseRecorded · Museum €75, David, equal B C D</td><td class="num">+485</td><td class="num">−100</td><td class="num">−20</td><td class="num">−365</td><td class="num q">–</td><td class="num">0</td></tr>
+        <tr><td class="num">6</td><td>MemberJoined · Eve (late joiner)</td><td class="num">+485</td><td class="num">−100</td><td class="num">−20</td><td class="num">−365</td><td class="num">0</td><td class="num">0</td></tr>
+        <tr><td class="num">7</td><td>ExpenseRecorded · Boat €300, Eve, equal A B E</td><td class="num">+385</td><td class="num">−200</td><td class="num">−20</td><td class="num">−365</td><td class="num">+200</td><td class="num">0</td></tr>
+        <tr><td class="num">8</td><td>ExpenseRecorded · Groceries €60, Bob, equal all five</td><td class="num">+373</td><td class="num">−152</td><td class="num">−32</td><td class="num">−377</td><td class="num">+188</td><td class="num">0</td></tr>
+        <tr><td class="num">9</td><td>ExpenseRecorded · Groceries €60 again (duplicate)</td><td class="num">+361</td><td class="num">−104</td><td class="num">−44</td><td class="num">−389</td><td class="num">+176</td><td class="num">0</td></tr>
+        <tr class="hl"><td class="num">10</td><td><b>ExpenseRemoved</b> · the duplicate</td><td class="num">+373</td><td class="num">−152</td><td class="num">−32</td><td class="num">−377</td><td class="num">+188</td><td class="num">0</td></tr>
+        <tr><td class="num">11</td><td>ExpenseRecorded · Farewell €250, Alice, exact 50/50/40/60/50</td><td class="num"><b>+573</b></td><td class="num"><b>−202</b></td><td class="num"><b>−72</b></td><td class="num"><b>−437</b></td><td class="num"><b>+138</b></td><td class="num">0</td></tr>
+        <tr><td class="num">12</td><td>SettlementPaymentConfirmed · Bob → Alice €202</td><td class="num">+371</td><td class="num">0</td><td class="num">−72</td><td class="num">−437</td><td class="num">+138</td><td class="num">0</td></tr>
+        <tr><td class="num">13</td><td>MemberLeft · Bob (balance 0, so R11 allows it)</td><td class="num">+371</td><td class="num q">0 left</td><td class="num">−72</td><td class="num">−437</td><td class="num">+138</td><td class="num">0</td></tr>
+        <tr><td class="num">14</td><td>GroupClosedForSettlement · plan: David → Alice 371, David → Eve 66, Carol → Eve 72</td><td class="num">+371</td><td class="num q">0</td><td class="num">−72</td><td class="num">−437</td><td class="num">+138</td><td class="num">0</td></tr>
+        <tr><td class="num">15</td><td>SettlementPaymentConfirmed · David → Alice €371</td><td class="num">0</td><td class="num q">0</td><td class="num">−72</td><td class="num">−66</td><td class="num">+138</td><td class="num">0</td></tr>
+        <tr><td class="num">16</td><td>SettlementPaymentConfirmed · David → Eve €66</td><td class="num">0</td><td class="num q">0</td><td class="num">−72</td><td class="num">0</td><td class="num">+72</td><td class="num">0</td></tr>
+        <tr class="hl"><td class="num">17</td><td>SettlementPaymentConfirmed · Carol → Eve €72 → <b class="ev">AllBalancesSettled</b> → GroupArchived</td><td class="num">0</td><td class="num q">0</td><td class="num">0</td><td class="num">0</td><td class="num">0</td><td class="num">0</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="small q">Each confirmed payment in steps 15–17 also passes D10: it never exceeds the debtor’s open debt or the creditor’s open credit. Rounding checks for Split (R4): €100 equal among three gives 33.34 / 33.33 / 33.33; €10.01 at 33 / 33 / 34 % gives 3.31 / 3.30 / 3.40.</p>
+</section>
+
+<!-- ============================ FINDINGS ============================ -->
+<section id="findings">
+  <div class="intro">
+    <div class="eyebrow">Review passes</div>
+    <h2>Review findings</h2>
+    <p>Reviewing the model against the requirements turned up places where the requirements contradict themselves or can’t be built as written. Each finding has a proposed fix for <code>ShareWise_Requirements.md</code>, once the team agrees.</p>
+  </div>
+  <div class="grid2">
+    <article class="card">
+      <div class="kicker"><span class="chip c-warn">fix the wording</span><span class="rule">F1 · R14</span></div>
+      <h3>“Active expenses only” would drop corrected expenses</h3>
+      <p>R14 counts “active expenses only”, but a corrected expense has status CORRECTED, and the corrected dinner (€200) clearly still counts in the Mallorca balances. Taken literally, the code would ignore every corrected expense.</p>
+      <p><b>Fix:</b> “over all expenses that are not removed”.</p>
+    </article>
+    <article class="card">
+      <div class="kicker"><span class="chip c-warn">fix the wording</span><span class="rule">F2 · R15</span></div>
+      <h3>“Minimum number of payments” can’t be promised</h3>
+      <p>(note:) Finding the true minimum is NP-hard: it means splitting the members into as many zero-sum groups as possible. The usual greedy plan (largest debtor pays largest creditor) needs at most one payment fewer than the number of members with a non-zero balance, but not always the minimum. Script check: balances +6, +4, −3, −3, −4 give 4 greedy payments, while 3 are possible ({+4, −4} and {+6, −3, −3}). For Mallorca, greedy and minimum are both 3.</p>
+      <p><b>Fix:</b> “The settlement plan needs at most n − 1 payments for n members with a non-zero balance. It never changes anyone’s balance.”</p>
+    </article>
+    <article class="card">
+      <div class="kicker"><span class="chip c-plain">clarify</span><span class="rule">F3 · R17</span></div>
+      <h3>“Open debt” has two readings</h3>
+      <p>It can mean the debt to this creditor in the plan, or the debtor’s whole negative balance. Two pending payments can also add up to more than the debt.</p>
+      <p><b>Fix:</b> D10. Check against open debt and open credit when recording, and again when confirming.</p>
+    </article>
+    <article class="card">
+      <div class="kicker"><span class="chip c-plain">clarify</span><span class="rule">F4 · R7 vs R11</span></div>
+      <h3>Corrections can reopen a former member’s balance</h3>
+      <p>Bob left at balance 0. Correcting the hotel afterwards would give him a share again, so a non-member would owe money.</p>
+      <p><b>Fix:</b> new rule R7a (D9).</p>
+    </article>
+    <article class="card">
+      <div class="kicker"><span class="chip c-plain">note</span><span class="rule">F5 · slide 64</span></div>
+      <h3><code>correct(newAmount)</code> is too narrow</h3>
+      <p>J5 lets you change the payer, the participants and the split too.</p>
+      <p><b>Fix:</b> <code>correct(roster, by, newVersion, reason)</code>. Say in P1 that we deliberately extended the slide.</p>
+    </article>
+    <article class="card">
+      <div class="kicker"><span class="chip c-plain">note</span><span class="rule">F6 · R10</span></div>
+      <h3>R10 needs no code of its own</h3>
+      <p>A participant must be a member when the expense is recorded (R2, R3), so late joiners can’t end up in older expenses. The recording time decides, not the expense date: an expense dated day 1 but recorded on day 4 may include Eve. That matches R10’s wording.</p>
+    </article>
+    <article class="card">
+      <div class="kicker"><span class="chip c-ev">discuss in P1</span><span class="rule">F7 · rule 4</span></div>
+      <h3>Eventual consistency leaves small windows</h3>
+      <p>An expense can be recorded in the same moment the group is closed, and a member can leave while an expense that includes them is being saved. In the monolith the roster updates right after Group commits, so the window is milliseconds. We accept it (slide 67, rule 4). If a former member ever ends up with a non-zero balance, Settlement can alert an admin. That kind of compensation is what Saga in P3 is about.</p>
+    </article>
+    <article class="card">
+      <div class="kicker"><span class="chip c-plain">note</span><span class="rule">F8 · §7</span></div>
+      <h3>Two listed events aren’t ours</h3>
+      <p><code>UserRegistered</code> has no subscriber, because Group takes the UserId from the login token. <code>PaymentReminderSent</code> changes no state, so it is a Notification command. Neither is modelled as our domain event in the MVP.</p>
+    </article>
+    <article class="card">
+      <div class="kicker"><span class="chip c-plain">clarify</span><span class="rule">F9 · J3</span></div>
+      <h3>An “invite link” can mean two things</h3>
+      <p>A personal link for one invitee, or one group link many people can use. The statuses ACCEPTED and DECLINED only fit the first.</p>
+      <p><b>Fix:</b> D12. One invitation is for one person; a reusable link is Could.</p>
+    </article>
+  </div>
+</section>
+</main>
+
+<footer class="wrap">
+  <div class="card">
+    <div class="label">Sources and what is ours</div>
+    <p class="small">Lecture: 02.DDD slides 25, 35, 40, 60, 64–72, 76, 78, via <code>notes/skripte/02_DDD.md</code>. Project files: <code>work/ShareWise_Requirements.md</code> (14.10), <code>Ex2_Context_Map.md</code>, <code>Ex2_Ubiquitous_Language.md</code>, <code>Ex2_Subdomains_vs_Bounded_Contexts.md</code>.</p>
+    <p class="small q">Not on the slides: BalanceSheet, GroupRoster, ExpenseEffect, ExpenseRevision, ValidityPeriod and InvitationCode are our names, and R3a, R7a, D10 and G1–G3 are our rules. The NP-hardness in F2 and the inbox for idempotency are background knowledge, not lecture content. Next step: Ex3.4, hexagonal architecture and package layout (workshop step 10).</p>
+  </div>
+</footer>
+
+<script>
+(function () {
+  var KEY = "sharewise-ex3-checks";
+  var state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { state = {}; }
+  var boxes = document.querySelectorAll("input[type=checkbox][data-k]");
+  function count(group) {
+    var all = document.querySelectorAll('input[data-g="' + group + '"]');
+    var n = 0;
+    all.forEach(function (b) { if (b.checked) n++; });
+    var out = document.querySelector('[data-count="' + group + '"]');
+    if (out) out.textContent = n + " of " + all.length;
+  }
+  boxes.forEach(function (b) {
+    b.checked = !!state[b.dataset.k];
+    b.addEventListener("change", function () {
+      state[b.dataset.k] = b.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+      count(b.dataset.g);
+    });
+  });
+  count("dec");
+  count("built");
+})();
+</script>

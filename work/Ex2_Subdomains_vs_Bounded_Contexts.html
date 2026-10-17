@@ -1,0 +1,315 @@
+<title>ShareWise Bounded Contexts</title>
+<style>
+  :root {
+    --bg: #f7f6f2; --panel: #ffffff; --ink: #1d1d1b; --quiet: #6b6a65; --line: #b9b7ae;
+    --core: #2f6fdb; --core-tint: #e6eefc; --sup: #8a6d1f; --sup-tint: #f6efdc;
+    --gen: #5b6b5a; --gen-tint: #e9eee8; --ctx: #6b3fa0; --ctx-tint: #f0e9f8; --hot: #d9480f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #161614; --panel: #201f1d; --ink: #ecebe6; --quiet: #a3a199; --line: #55534c;
+      --core: #7aa7f5; --core-tint: #1d2a42; --sup: #d6b45c; --sup-tint: #352d17;
+      --gen: #a6b8a4; --gen-tint: #232a22; --ctx: #b994e6; --ctx-tint: #2c2238; --hot: #ff8a4c;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #161614; --panel: #201f1d; --ink: #ecebe6; --quiet: #a3a199; --line: #55534c;
+    --core: #7aa7f5; --core-tint: #1d2a42; --sup: #d6b45c; --sup-tint: #352d17;
+    --gen: #a6b8a4; --gen-tint: #232a22; --ctx: #b994e6; --ctx-tint: #2c2238; --hot: #ff8a4c;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1080px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 26px; margin: 0 0 6px; }
+  h2 { font-size: 18px; margin: 40px 0 8px; }
+  .lead { color: var(--quiet); margin: 0 0 20px; max-width: 760px; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+  svg { width: 100%; height: auto; display: block; }
+  svg text { fill: var(--ink); font-family: inherit; }
+  .q { fill: var(--quiet); }
+  .lbl { paint-order: stroke; stroke: var(--panel); stroke-width: 5px; stroke-linejoin: round; }
+  .box { stroke-width: 1.3; }
+  .link { fill: none; stroke: var(--line); stroke-width: 1.6; transition: stroke .15s, stroke-width .15s; }
+  .link.dash { stroke-dasharray: 5 4; }
+  .node { cursor: pointer; }
+  .node:hover .box, .node.on .box { stroke: var(--hot); stroke-width: 2.4; }
+  .link.on { stroke: var(--hot); stroke-width: 2.6; }
+  .hint { color: var(--quiet); font-size: 13px; margin-top: 8px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; cursor: pointer; }
+  .card.on { border-color: var(--hot); box-shadow: 0 0 0 1px var(--hot); }
+  .card h3 { margin: 0; font-size: 15px; color: var(--ctx); }
+  .card .role { font-weight: 650; margin: 2px 0 8px; }
+  .card ul { margin: 0; padding-left: 18px; }
+  .card .not { color: var(--quiet); font-size: 13px; margin-top: 8px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--quiet); font-weight: 600; }
+  .scroll { overflow-x: auto; }
+  .tag { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 99px; font-weight: 600; }
+  .t-core { background: var(--core-tint); color: var(--core); }
+  .t-sup { background: var(--sup-tint); color: var(--sup); }
+  .t-gen { background: var(--gen-tint); color: var(--gen); }
+  .key { display: flex; flex-wrap: wrap; gap: 16px; font-size: 13px; color: var(--quiet); margin-top: 10px; }
+</style>
+<main>
+  <h1>Subdomains vs bounded contexts in ShareWise</h1>
+  <p class="lead">Left: what the business does, discovered and typed by importance (problem space). Right: the models we design, which become modules (solution space). A context implements one or more subdomains, so the mapping is not always 1:1. The contexts are our first proposal for the workshop. Currency exchange and payment transfer were dropped from scope on 14.10: each group has one currency, and settlement payments are only recorded.</p>
+
+  <div class="panel">
+    <svg viewBox="0 0 1000 610" role="img" aria-label="Mapping from ShareWise subdomains to bounded contexts">
+      <!-- headers -->
+      <text x="20" y="28" font-size="13" font-weight="700" class="q">PROBLEM SPACE · subdomains (discovered)</text>
+      <text x="600" y="28" font-size="13" font-weight="700" class="q">SOLUTION SPACE · bounded contexts (designed)</text>
+
+      <!-- type bands -->
+      <rect x="10" y="44" width="350" height="180" rx="10" fill="var(--core-tint)"/>
+      <text x="24" y="66" font-size="12" font-weight="700" fill="var(--core)" style="fill:var(--core)">CORE · build in-house, invest</text>
+      <rect x="10" y="236" width="350" height="150" rx="10" fill="var(--sup-tint)"/>
+      <text x="24" y="258" font-size="12" font-weight="700" style="fill:var(--sup)">SUPPORTING · frameworks / outsource</text>
+      <rect x="10" y="398" width="350" height="150" rx="10" fill="var(--gen-tint)"/>
+      <text x="24" y="420" font-size="12" font-weight="700" style="fill:var(--gen)">GENERIC · buy / external</text>
+
+      <!-- links (drawn first, under boxes) -->
+      <path class="link" data-k="exp" d="M340 110 C 470 110, 470 120, 600 120"/>
+      <path class="link" data-k="set" d="M340 180 C 470 180, 470 225, 600 225"/>
+      <path class="link dash" data-k="set grp" d="M340 186 C 480 200, 470 330, 600 330"/>
+      <path class="link" data-k="grp" d="M340 300 C 470 300, 470 316, 600 316"/>
+      <path class="link" data-k="act" d="M340 356 C 470 356, 470 428, 600 428"/>
+      <path class="link" data-k="idn" d="M340 456 C 470 456, 470 500, 600 500"/>
+      <path class="link" data-k="ntf" d="M340 510 C 470 510, 470 566, 600 566"/>
+
+      <!-- mapping labels -->
+      <text x="470" y="104" font-size="11.5" class="q lbl" text-anchor="middle">1:1</text>
+      <text x="470" y="188" font-size="11.5" class="q lbl" text-anchor="middle">1:n</text>
+      <text x="505" y="268" font-size="11.5" class="q lbl" text-anchor="middle">status lifecycle</text>
+      <text x="470" y="296" font-size="11.5" class="q lbl" text-anchor="middle">1:1</text>
+      <text x="470" y="384" font-size="11.5" class="q lbl" text-anchor="middle">1:1 (read model)</text>
+      <text x="470" y="470" font-size="11.5" class="q lbl" text-anchor="middle">bought</text>
+      <text x="470" y="530" font-size="11.5" class="q lbl" text-anchor="middle">1:1 (adapter)</text>
+
+      <!-- subdomains -->
+      <g class="node" data-k="exp"><rect class="box" x="24" y="80" width="316" height="60" rx="8" fill="var(--panel)" stroke="var(--core)"/>
+        <text x="40" y="104" font-weight="650">Expense Sharing</text>
+        <text x="40" y="124" font-size="12.5" class="q">record, split equal/exact/%, correct, remove</text></g>
+      <g class="node" data-k="set"><rect class="box" x="24" y="150" width="316" height="60" rx="8" fill="var(--panel)" stroke="var(--core)"/>
+        <text x="40" y="174" font-weight="650">Settlement</text>
+        <text x="40" y="194" font-size="12.5" class="q">balances, simplify debts, payments, close</text></g>
+      <g class="node" data-k="grp"><rect class="box" x="24" y="272" width="316" height="52" rx="8" fill="var(--panel)" stroke="var(--sup)"/>
+        <text x="40" y="294" font-weight="650">Group &amp; Membership</text>
+        <text x="40" y="313" font-size="12.5" class="q">create, invite, join, roles, leave at 0</text></g>
+      <g class="node" data-k="act"><rect class="box" x="24" y="330" width="316" height="48" rx="8" fill="var(--panel)" stroke="var(--sup)"/>
+        <text x="40" y="351" font-weight="650">History &amp; Reporting</text>
+        <text x="40" y="369" font-size="12.5" class="q">activity feed, archive view, export</text></g>
+      <g class="node" data-k="idn"><rect class="box" x="24" y="432" width="316" height="48" rx="8" fill="var(--panel)" stroke="var(--gen)"/>
+        <text x="40" y="453" font-weight="650">Identity &amp; Access</text>
+        <text x="40" y="471" font-size="12.5" class="q">register, login</text></g>
+      <g class="node" data-k="ntf"><rect class="box" x="24" y="488" width="316" height="44" rx="8" fill="var(--panel)" stroke="var(--gen)"/>
+        <text x="40" y="508" font-weight="650">Notification Delivery</text>
+        <text x="40" y="525" font-size="12.5" class="q">email, push</text></g>
+
+      <!-- bounded contexts -->
+      <g class="node" data-k="exp"><rect class="box" x="600" y="80" width="380" height="76" rx="8" fill="var(--ctx-tint)" stroke="var(--ctx)"/>
+        <text x="616" y="104" font-weight="700">Expense Context</text>
+        <text x="616" y="124" font-size="12.5">Expense, Payer, Participant / Share, SplitStrategy, Money</text>
+        <text x="616" y="146" font-size="11.5" class="q">module: sharewise.expense · hexagonal</text></g>
+      <g class="node" data-k="set"><rect class="box" x="600" y="180" width="380" height="84" rx="8" fill="var(--ctx-tint)" stroke="var(--ctx)"/>
+        <text x="616" y="204" font-weight="700">Settlement Context</text>
+        <text x="616" y="224" font-size="12.5">Balance, Debtor / Creditor, SettlementPlan</text>
+        <text x="616" y="242" font-size="12.5">SettlementPayment (PENDING → CONFIRMED)</text>
+        <text x="616" y="258" font-size="11.5" class="q">module: sharewise.settlement · hexagonal</text></g>
+      <g class="node" data-k="grp"><rect class="box" x="600" y="280" width="380" height="96" rx="8" fill="var(--ctx-tint)" stroke="var(--ctx)"/>
+        <text x="616" y="304" font-weight="700">Group Context</text>
+        <text x="616" y="324" font-size="12.5">Group, Member, Role (ADMIN), Invitation</text>
+        <text x="616" y="342" font-size="12.5">GroupStatus: OPEN → CLOSED → ARCHIVED</text>
+        <text x="616" y="366" font-size="11.5" class="q">module: sharewise.group · layered</text></g>
+      <g class="node" data-k="act"><rect class="box" x="600" y="392" width="380" height="68" rx="8" fill="var(--ctx-tint)" stroke="var(--ctx)"/>
+        <text x="616" y="416" font-weight="700">Activity Context</text>
+        <text x="616" y="436" font-size="12.5">ActivityEntry built from other contexts' events</text>
+        <text x="616" y="452" font-size="11.5" class="q">module: sharewise.activity · read model</text></g>
+      <g class="node" data-k="idn"><rect class="box" x="600" y="476" width="380" height="56" rx="8" fill="var(--ctx-tint)" stroke="var(--ctx)"/>
+        <text x="616" y="500" font-weight="700">Identity Context</text>
+        <text x="616" y="520" font-size="12.5" class="q">Keycloak / Spring Security · we only integrate</text></g>
+      <g class="node" data-k="ntf"><rect class="box" x="600" y="542" width="380" height="52" rx="8" fill="var(--ctx-tint)" stroke="var(--ctx)"/>
+        <text x="616" y="564" font-weight="700">Notification Context</text>
+        <text x="616" y="583" font-size="12.5" class="q">adapter to SMTP / push service</text></g>
+    </svg>
+    <div class="key">
+      <span><span class="tag t-core">core</span> <span class="tag t-sup">supporting</span> <span class="tag t-gen">generic</span> = subdomain type</span>
+      <span>purple box = bounded context (a module of the monolith)</span>
+      <span>dashed line = partial or external mapping</span>
+    </div>
+    <p class="hint">Click a box to highlight its mapping. Clicking a context also highlights Alice's card below.</p>
+  </div>
+
+  <h2>Why cut here? One person, six models (DDD slide 40)</h2>
+  <p class="lead">Alice from "Mallorca 2027" is the same person in every context, but each context knows different things about Alice. Where the meaning changes, we draw a boundary. Contexts link Alice only by ID, never through one shared User class.</p>
+  <div class="grid" id="cards">
+    <div class="card" data-k="idn"><h3>Identity</h3><div class="role">Alice is a User</div>
+      <ul><li>account, email, password</li><li>display name "Alice"</li></ul>
+      <div class="not">Doesn't know: groups, expenses, money</div></div>
+    <div class="card" data-k="grp"><h3>Group</h3><div class="role">Alice is a Member (ADMIN)</div>
+      <ul><li>created "Mallorca 2027" on day 0</li><li>co-members: Carol, David, Eve (joined day 3)</li><li>Bob: FORMER_MEMBER after day 5</li><li>closes the group on day 6</li></ul>
+      <div class="not">Doesn't know: who paid what</div></div>
+    <div class="card" data-k="exp"><h3>Expense</h3><div class="role">Alice is a Payer and a Participant</div>
+      <ul><li>payer: Hotel €900, Farewell dinner €250</li><li>shares: 225 + 50 + 140 + 100 + 12 + 50 = <b>€577</b></li></ul>
+      <div class="not">Doesn't know: Alice's role or password</div></div>
+    <div class="card" data-k="set"><h3>Settlement</h3><div class="role">Alice is a Creditor</div>
+      <ul><li>balance 1150 − 577 = <b>+573</b></li><li>after Bob pays €202: <b>+371</b></li><li>plan: David → Alice €371</li></ul>
+      <div class="not">Doesn't know: which expense was the hotel</div></div>
+    <div class="card" data-k="act"><h3>Activity</h3><div class="role">Alice is an Actor</div>
+      <ul><li>"Alice recorded Hotel €900"</li><li>"Alice closed the group for settlement"</li></ul>
+      <div class="not">Read only, owns no rules</div></div>
+    <div class="card" data-k="ntf"><h3>Notification</h3><div class="role">Alice is a Recipient</div>
+      <ul><li>"Bob paid you €202, please confirm"</li></ul>
+      <div class="not">Doesn't know: why the payment exists</div></div>
+  </div>
+
+  <h2>Context map: how the contexts talk (DDD slides 45–55)</h2>
+  <p class="lead">Each line is a contract between two contexts (in DDD terms, between the teams that own them). U = upstream (supplier), D = downstream (consumer). Arrows point to the upstream side, as on slides 50–52. The numbers match the table below.</p>
+  <div class="panel">
+    <svg viewBox="0 0 1000 720" role="img" aria-label="ShareWise context map with patterns">
+      <defs>
+        <marker id="cm-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0L10 5L0 10z" fill="var(--quiet)"/></marker>
+      </defs>
+      <g fill="none" stroke="var(--quiet)" stroke-width="1.6">
+        <!-- (1) Group conforms to Identity -->
+        <path d="M500 180 V98" marker-end="url(#cm-arrow)"/>
+        <!-- (2) Expense ACL -> Group OHS -->
+        <path d="M260 378 V318 H424 V258" marker-end="url(#cm-arrow)"/>
+        <!-- (3) Settlement ACL -> Group OHS -->
+        <path d="M688 378 V318 H576 V258" marker-end="url(#cm-arrow)"/>
+        <!-- (5) Group conforms to Settlement -->
+        <path d="M630 212 H820 V388" marker-end="url(#cm-arrow)"/>
+        <!-- events bus -->
+        <path d="M320 460 V520 H780 V460" stroke-dasharray="5 4"/>
+        <!-- (6)(7) Activity / Notification conform to events -->
+        <path d="M500 580 V522" marker-end="url(#cm-arrow)"/>
+        <path d="M720 580 V522" marker-end="url(#cm-arrow)"/>
+        <!-- (8) Notification conforms to provider -->
+        <path d="M800 605 H838" marker-end="url(#cm-arrow)"/>
+        <!-- (4b) shared kernel ties -->
+        <path d="M380 452 H405 M595 452 H620"/>
+      </g>
+      <!-- (4) partnership -->
+      <path d="M380 416 H620" stroke="var(--core)" stroke-width="3" fill="none"/>
+      <text x="500" y="408" text-anchor="middle" font-size="12.5" font-weight="700" style="fill:var(--core)">(4) Partners</text>
+
+      <!-- contexts -->
+      <rect x="380" y="40" width="240" height="56" rx="28" fill="var(--gen-tint)" stroke="var(--gen)" stroke-dasharray="5 4" class="box"/>
+      <text x="500" y="64" text-anchor="middle" font-weight="700">Identity (Keycloak)</text>
+      <text x="500" y="82" text-anchor="middle" font-size="12" class="q">generic · external</text>
+
+      <rect x="370" y="180" width="260" height="64" rx="32" fill="var(--sup-tint)" stroke="var(--sup)" class="box"/>
+      <text x="500" y="207" text-anchor="middle" font-weight="700">Group</text>
+      <text x="500" y="225" text-anchor="middle" font-size="12" class="q">supporting</text>
+
+      <rect x="140" y="390" width="240" height="70" rx="35" fill="var(--core-tint)" stroke="var(--core)" class="box"/>
+      <text x="260" y="422" text-anchor="middle" font-weight="700">Expense</text>
+      <text x="260" y="440" text-anchor="middle" font-size="12" class="q">core</text>
+
+      <rect x="620" y="390" width="240" height="70" rx="35" fill="var(--core-tint)" stroke="var(--core)" class="box"/>
+      <text x="740" y="422" text-anchor="middle" font-weight="700">Settlement</text>
+      <text x="740" y="440" text-anchor="middle" font-size="12" class="q">core</text>
+
+      <rect x="415" y="580" width="170" height="50" rx="25" fill="var(--sup-tint)" stroke="var(--sup)"/>
+      <text x="500" y="603" text-anchor="middle" font-weight="700">Activity</text>
+      <text x="500" y="620" text-anchor="middle" font-size="12" class="q">supporting · read model</text>
+
+      <rect x="640" y="580" width="160" height="50" rx="25" fill="var(--gen-tint)" stroke="var(--gen)"/>
+      <text x="720" y="603" text-anchor="middle" font-weight="700">Notification</text>
+      <text x="720" y="620" text-anchor="middle" font-size="12" class="q">generic</text>
+
+      <rect x="840" y="580" width="140" height="50" rx="25" fill="none" stroke="var(--line)" stroke-dasharray="5 4"/>
+      <text x="910" y="603" text-anchor="middle" font-weight="700">Email / push</text>
+      <text x="910" y="620" text-anchor="middle" font-size="12" class="q">provider · external</text>
+
+      <!-- pattern boxes -->
+      <g font-size="11" font-weight="700" text-anchor="middle">
+        <rect x="400" y="232" width="48" height="24" rx="4" fill="var(--ctx)"/><text x="424" y="248" style="fill:var(--panel)">OHS</text>
+        <rect x="552" y="232" width="48" height="24" rx="4" fill="var(--ctx)"/><text x="576" y="248" style="fill:var(--panel)">OHS</text>
+        <rect x="236" y="378" width="48" height="24" rx="4" fill="var(--hot)"/><text x="260" y="394" style="fill:var(--panel)">ACL</text>
+        <rect x="664" y="378" width="48" height="24" rx="4" fill="var(--hot)"/><text x="688" y="394" style="fill:var(--panel)">ACL</text>
+      </g>
+      <rect x="405" y="432" width="190" height="40" rx="20" fill="var(--hot)" fill-opacity="0.14" stroke="var(--hot)"/>
+      <text x="500" y="449" text-anchor="middle" font-size="12" font-weight="700">(4b) Shared Kernel</text>
+      <text x="500" y="465" text-anchor="middle" font-size="11.5" class="q">Money, GroupId, MemberId</text>
+
+      <!-- edge labels -->
+      <g font-size="12">
+        <text x="512" y="136" font-weight="700">(1) Conforms</text>
+        <text x="512" y="152" class="q">UserId, name from OIDC token</text>
+        <text x="488" y="112" text-anchor="end" font-weight="700" class="q">U</text>
+        <text x="488" y="176" text-anchor="end" font-weight="700" class="q">D</text>
+
+        <text x="272" y="308" font-weight="700">(2) members, status</text>
+        <text x="436" y="276" font-weight="700" class="q">U</text>
+        <text x="248" y="372" text-anchor="end" font-weight="700" class="q">D</text>
+
+        <text x="572" y="308" font-weight="700">(3) members, closed</text>
+        <text x="564" y="276" text-anchor="end" font-weight="700" class="q">U</text>
+        <text x="700" y="372" font-weight="700" class="q">D</text>
+
+        <text x="832" y="290" font-weight="700">(5) Conforms</text>
+        <text x="832" y="306" class="q">balance 0?</text>
+        <text x="832" y="322" class="q">AllBalancesSettled</text>
+        <text x="832" y="382" font-weight="700" class="q">U</text>
+        <text x="640" y="204" font-weight="700" class="q">D</text>
+
+        <text x="550" y="512" text-anchor="middle" class="q">domain events published by all contexts (U)</text>
+        <text x="510" y="556" font-weight="700">(6) Conforms</text>
+        <text x="730" y="556" font-weight="700">(7) Conforms</text>
+        <text x="820" y="570" text-anchor="middle" font-weight="700">(8)</text>
+      </g>
+      <text x="24" y="690" font-size="12.5" class="q">Not drawn: (9) Logging = Separate Ways, each context uses the library locally (slide 53).</text>
+    </svg>
+    <div class="key">
+      <span><span class="tag" style="background:var(--ctx);color:var(--panel)">OHS</span> upstream publishes a stable interface</span>
+      <span><span class="tag" style="background:var(--hot);color:var(--panel)">ACL</span> core downstream translates into its own model</span>
+      <span><b style="color:var(--core)">━</b> Partnership</span>
+      <span>pill between = Shared Kernel</span>
+      <span>dashed = external system</span>
+    </div>
+  </div>
+
+  <div class="panel scroll" style="margin-top:12px">
+    <table>
+      <tr><th>#</th><th>Upstream → downstream</th><th>Pattern</th><th>Why</th></tr>
+      <tr><td>1</td><td>Identity → Group</td><td>Conformist</td><td>OIDC is an industry standard (slide 50); only UserId + name needed</td></tr>
+      <tr><td>2, 3</td><td>Group → Expense, Settlement</td><td>OHS + ACL</td><td>Group has 2 consumers → stable published language (52); core consumers translate Member into Participant / Debtor (51)</td></tr>
+      <tr><td>4</td><td>Expense ↔ Settlement</td><td>Partnership + small Shared Kernel</td><td>Both core, dependent goals (46); same money arithmetic and IDs, kept tiny (48)</td></tr>
+      <tr><td>5</td><td>Settlement → Group</td><td>Conformist</td><td>Supporting Group just accepts "balance 0?" and AllBalancesSettled; the cycle is broken with events</td></tr>
+      <tr><td>6, 7</td><td>All → Activity, Notification</td><td>Conformist</td><td>Read model / thin adapter; translating would add nothing</td></tr>
+      <tr><td>8</td><td>Provider → Notification</td><td>Conformist</td><td>Standard SMTP/push API</td></tr>
+      <tr><td>9</td><td>Logging</td><td>Separate Ways</td><td>Generic library, cheaper locally (53); never between core contexts</td></tr>
+    </table>
+  </div>
+
+  <h2>Subdomain vs bounded context</h2>
+  <div class="panel scroll">
+    <table>
+      <tr><th></th><th>Subdomain</th><th>Bounded context</th></tr>
+      <tr><td><b>Space</b></td><td>Problem space (slide 29)</td><td>Solution space (slide 29)</td></tr>
+      <tr><td><b>Origin</b></td><td>Discovered: exists without software (slide 43)</td><td>Designed: a strategic decision (slide 43)</td></tr>
+      <tr><td><b>Answers</b></td><td>What does the business do, and how important is it?</td><td>Where does one model with one language stay consistent?</td></tr>
+      <tr><td><b>Typed</b></td><td>core / supporting / generic</td><td>no type; inherits importance from its subdomains</td></tr>
+      <tr><td><b>Used for</b></td><td>priorities: invest, build, buy</td><td>modules → later services → teams (Conway, slide 15)</td></tr>
+      <tr><td><b>ShareWise</b></td><td>6 subdomains (2 core, 2 supporting, 2 generic)</td><td>6 contexts; 1:1 and 1:n mappings</td></tr>
+    </table>
+  </div>
+</main>
+<script>
+  const all = () => document.querySelectorAll('.node, .link, .card');
+  function select(k) {
+    all().forEach(el => {
+      const keys = (el.dataset.k || '').split(' ');
+      el.classList.toggle('on', keys.includes(k));
+    });
+  }
+  document.querySelectorAll('.node, .card').forEach(el =>
+    el.addEventListener('click', () => select(el.dataset.k.split(' ')[0])));
+</script>
