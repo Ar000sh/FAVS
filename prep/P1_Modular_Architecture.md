@@ -242,15 +242,20 @@ Showing this mapping is what makes the presentation about "modular *architecture
 
 ## 7. My prepared answers (own notes, not from the slides)
 
-**"LedgerEntry never changes. Why is it an entity and not a value object?"**
-- Slide test (65/66): an entity is followed over time and has an identity. A value object is immutable, has no identity of its own, and is equal when all its values are equal.
-- **For a value object:**
-  - An entry is written once and never changed. A correction adds a reversal entry.
-  - It is fully described by userId, deltaAmount, type, referenceId and occurredAt.
-  - Nothing refers to a single entry by its id; a reversal refers to the expense via referenceId.
-  - Bonus: two entries with identical values = the same event booked twice, which equality detects at once. This is useful for idempotency in P3, when RabbitMQ may deliver an event twice.
-- **For an entity:** you need an id only if you want to point at one specific booking (an audit view, reversing exactly one entry). A database key alone is a technical reason, not a domain reason.
-- (note:) By the slide test the value-object answer is stronger. The team chose «Entity». Answer: "it's immutable; we gave it an id so a single booking can be referenced in the audit trail. By the strict slide test it could also be a value object."
+**"LedgerEntry never changes. Why is it an entity and not a value object?"** 🟢 Decision: entity (team, 17.10)
+
+*Short answer for the presentation:*
+> "A ledger entry is a booking, and every booking has its own identity, like a line in an accounting journal. It is immutable, but an entity doesn't have to be mutable: the slides say entities are *often* mutable, not always (slide 66). What matters is that we need to tell individual bookings apart and refer to them."
+
+*The arguments behind it:*
+1. **Identity matters more than the values.** An entry is a fact: "on this date, this booking happened for Bob because of this expense". Two bookings can look alike and still be two separate facts. For example: an expense is recorded, removed (reversal), then recorded again. With value-object equality, bookings with equal values would count as the same thing, and the balance would be wrong.
+2. **Traceability / audit.** A balance must be explainable: "which bookings make up Bob's −202?" (J7 step 4: drill down into the expenses behind a balance). For that, every booking needs a stable id the read models and the UI can point to.
+3. **Reversals refer to what they reverse.** "Entry Y reverses entry X" is natural with ids. Accounting ledgers always number their entries for that reason.
+4. **Immutable ≠ value object.** Slide 66 describes entities as "often mutable", so immutability alone doesn't make something a value object. The question from slides 65/66 is whether we care *which one* it is. For bookings we do.
+5. (secondary, technical) An append-only table needs a key anyway. That is not a domain reason, so mention it last or not at all.
+
+*If they push back ("but it never changes, so it should be a value object"):*
+> "By the strict slide test it could be one, since an entry is fully described by its values. We chose an entity because we need to refer to single bookings (audit, reversals) and because two equal-looking bookings are still two facts. It's a deliberate trade-off."
 
 **"Doesn't GroupLedger grow forever?"** (aggregate rule 2, slide 67: design small aggregates)
 - There is one ledger per group, and a group is small: a trip has dozens or hundreds of expenses, not millions.
