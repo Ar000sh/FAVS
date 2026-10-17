@@ -22,7 +22,14 @@ Team original: `work/archive/firstdraft_ORIGINAL_team_import.drawio`.
    - If **no**, an admin archives with `archiveGroup()`, which checks that every member has `hasZeroBalance`. Then Group no longer needs to subscribe to `AllBalancesSettled`.
    - The diagram currently keeps the team version: Group subscribes to AllBalancesSettled.
 2. **`correct()` stays as the team had it** (amount + shares). Our journey J5 in `ShareWise_Requirements.md` also allows correcting the payer, so either we remove "payer" from J5 or we widen `correct()`. The slides only show `correct(newAmount)` (DDD slide 64).
-3. **`waive()` / `DebtWaived` is a new feature.** It isn't in the requirements. Keep it (then add it to the requirements and define what waiving means) or drop it for the MVP?
+3. **`waive()` / `DebtWaived`: left as the team had it, to discuss.**
+   - It is a new feature: it isn't on the slides or in our requirements.
+   - It sits on a SettlementPayment, so the debtor first has to record a payment that the creditor then waives. Waiving is about an open debt, not about a payment.
+   - It has no exact meaning yet: does the creditor waive all of the debt or part of it, and what happens to both balances?
+   - Options:
+     - **(a)** Drop it for the MVP: remove `waive()`, `WAIVED`, `DebtWaived`, `appendDebtWaiver()` and `DEBT_WAIVED`.
+     - **(b)** Keep it as a ledger command, e.g. `GroupLedger.waiveDebt(debtor, creditor, amount): DebtWaived`, plus a new rule in the requirements.
+     - **(c)** Keep it as is and expect a question about it in P1.
 4. **LedgerEntry: «Entity» or value object?** An entry never changes once written. Be ready for the question "doesn't GroupLedger grow forever?" (aggregate rule 2: small aggregates).
 5. **Small items:**
    - `createGroup()` has no parameters (name, currency, creator?).
