@@ -34,16 +34,20 @@ C = {
     "Expense": ("root", ["+ id: ExpenseId", "+ groupId: GroupId", "+ paidBy: UserId", "+ recordedBy: UserId",
                          "+ title: ExpenseTitle", "+ totalAmount: Money", "+ splitStrategy: SplitStrategy",
                          "+ status: ExpenseStatus"],
-                ["+ record(GroupId, UserId, Money, List<ExpenseShare>, SplitStrategy): ExpenseRecorded",
-                 "+ correct(Money newAmount, List<ExpenseShare> newShares,",
+                ["+ record(GroupMembershipView view, GroupId, UserId, Money,",
+                 "      List<ExpenseShare>, SplitStrategy): ExpenseRecorded",
+                 "+ correct(GroupMembershipView view, Money newAmount, List<ExpenseShare> newShares,",
                  "      String reason, UserId actor): ExpenseCorrected",
-                 "+ remove(UserId actor): ExpenseRemoved"]),
+                 "+ remove(GroupMembershipView view, UserId actor): ExpenseRemoved"]),
     "ExpenseShare": ("vo", ["+ participantId: UserId", "+ owedShare: Money"], []),
     "ExpenseRevision": ("vo", ["+ previousAmount: Money", "+ previousShares: List<ExpenseShare>", "+ correctedAt: Instant",
                                "+ correctedBy: UserId", "+ reason: String"], []),
     "SplitStrategy": ("enum", ["EQUAL", "EXACT", "PERCENTAGE"], []),
     "ExpenseStatus": ("enum", ["ACTIVE", "CORRECTED", "REMOVED"], []),
     "ExpenseDomainEvents": ("events", ["ExpenseRecorded", "ExpenseCorrected", "ExpenseRemoved"], []),
+    "GroupMembershipView": ("readmodel", ["+ groupId: GroupId", "+ isOpen: boolean", "+ activeMembers: Set<UserId>",
+                                          "+ admins: Set<UserId>"],
+                            ["+ isActiveMember(UserId): boolean", "+ isAdmin(UserId): boolean"]),
     # Settlement context (core)
     "GroupLedger": ("root", ["+ groupId: GroupId"],
                     ["+ appendExpenseEntry(ExpenseRecorded)", "+ appendCorrectionReversal(ExpenseCorrected)",
@@ -214,9 +218,11 @@ ae_w = max(20 + xw, x - 40) + 20
 ae_h = r2 + max(size(nm)[1] for nm in ("ExpenseShare", "ExpenseRevision", "SplitStrategy", "ExpenseStatus")) + 30
 i = [k for k, c in enumerate(cells) if 'id="AE"' in c][0]
 cells[i] = cells[i].replace('width="10" height="10"', f'width="{ae_w}" height="{ae_h}"'); box["AE"] = (box["AE"][0], box["AE"][1], ae_w, ae_h)
-cls("ExpenseDomainEvents", "E", 20 + ae_w + 60, 100)
-e_w = 20 + ae_w + 60 + size("ExpenseDomainEvents")[0] + 30
-e_h = 50 + ae_h + 30
+RC = 20 + ae_w + 60                                  # right column of the Expense context
+gmw, gmh = cls("GroupMembershipView", "E", RC, 100)
+cls("ExpenseDomainEvents", "E", RC, 100 + gmh + 70)
+e_w = RC + max(gmw, size("ExpenseDomainEvents")[0]) + 30
+e_h = max(50 + ae_h, 100 + gmh + 70 + size("ExpenseDomainEvents")[1]) + 30
 i = [k for k, c in enumerate(cells) if 'id="E"' in c][0]
 cells[i] = cells[i].replace('width="10" height="10"', f'width="{e_w}" height="{e_h}"'); box["E"] = (E0[0], E0[1], e_w, e_h)
 
@@ -225,7 +231,15 @@ comp("ExpenseRevision", "Expense", "maintains history", ("0..*", "1"))
 comp("SplitStrategy", "Expense")
 comp("ExpenseStatus", "Expense")
 xx, xy, xw_, xh_ = box["Expense"]; ex_, ey_, ew_, eh_ = box["ExpenseDomainEvents"]
-edge("Expense", "ExpenseDomainEvents", PUB, "publishes", exit=(1, (ey_ + 40 - xy) / xh_), entry=(0, 40 / eh_))
+y_pub = (max(xy, ey_) + min(xy + xh_, ey_ + eh_)) / 2           # level where Expense and its events box overlap
+edge("Expense", "ExpenseDomainEvents", PUB, "publishes", exit=(1, (y_pub - xy) / xh_), entry=(0, (y_pub - ey_) / eh_))
+vx, vy, vw, vh = box["GroupMembershipView"]
+edge("Expense", "GroupMembershipView", DASH, "checks against (passed in)", exit=(1, (vy + 40 - xy) / xh_), entry=(0, 40 / vh))
+# the view is kept up to date by the Group events: over the top of both contexts, down into GroupDomainEvents
+GDE = box["GroupDomainEvents"]
+edge("GroupMembershipView", "GroupDomainEvents", SUB,
+     "subscribes to (MemberJoined, MemberLeft, MemberRemoved, MemberPromoted, GroupClosedForSettlement, GroupReopened, GroupArchived)",
+     exit=(0.5, 0), entry=(0.5, 0), points=[(vx + vw / 2, -18), (GDE[0] + GDE[2] / 2, -18)], label_at=0.0)
 
 # ================================================================== Settlement context
 S0 = (0, max(g_h, e_h) + 140)
@@ -300,8 +314,11 @@ yP = M[1] + 30
 edge("Money", "SettlementPayment", COMP, "amount", exit=(0, (yP - M[1]) / M[3]), entry=(1, (yP - P[1]) / P[3]), mult=("1", "1"))
 # Expense *-- Money (totalAmount) and Expense ..> GroupId / UserId: down a lane right of the Expense context
 lane = box["E"][0] + box["E"][2] + 40
-for k, (tgt, lbl, sty, fy) in enumerate((("Money", "totalAmount", COMP, 0.55), ("GroupId", "references by ID", DASH, 0.65),
-                                       ("UserId", "references by ID", DASH, 0.75))):
+# the three lines leave Expense through the free gap between GroupMembershipView and ExpenseDomainEvents
+V = box["GroupMembershipView"]; g_lo, g_hi = V[1] + V[3] + 12, EDE[1] - 12
+fys = [(g_lo + (g_hi - g_lo) * k / 2 - X[1]) / X[3] for k in range(3)]
+for k, (tgt, lbl, sty, fy) in enumerate((("Money", "totalAmount", COMP, fys[0]), ("GroupId", "references by ID", DASH, fys[1]),
+                                       ("UserId", "references by ID", DASH, fys[2]))):
     T = box[tgt]; lx = lane + 18 * k; ty = T[1] - 30 - 12 * k if tgt != "UserId" else T[1] + T[3] / 2
     if tgt == "Money":
         edge(tgt, "Expense", COMP, lbl, exit=(0.7, 0), entry=(1, fy), points=[(T[0] + 0.7 * T[2], ty), (lx, ty), (lx, X[1] + fy * X[3])], mult=("1", "1"))
