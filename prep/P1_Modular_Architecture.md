@@ -237,3 +237,22 @@ Showing this mapping is what makes the presentation about "modular *architecture
 9. Why hexagonal for the core and layered for the rest?
 10. Which of your modules would you extract as a service first later, and why? (This points ahead to P2/P3.)
 11. Cloud: ISO capabilities type vs service category. Which category is a managed DB? (DSaaS, which spans all 3 types.)
+
+---
+
+## 7. My prepared answers (own notes, not from the slides)
+
+**"LedgerEntry never changes. Why is it an entity and not a value object?"**
+- Slide test (65/66): an entity is followed over time and has an identity. A value object is immutable, has no identity of its own, and is equal when all its values are equal.
+- **For a value object:**
+  - An entry is written once and never changed. A correction adds a reversal entry.
+  - It is fully described by userId, deltaAmount, type, referenceId and occurredAt.
+  - Nothing refers to a single entry by its id; a reversal refers to the expense via referenceId.
+  - Bonus: two entries with identical values = the same event booked twice, which equality detects at once. This is useful for idempotency in P3, when RabbitMQ may deliver an event twice.
+- **For an entity:** you need an id only if you want to point at one specific booking (an audit view, reversing exactly one entry). A database key alone is a technical reason, not a domain reason.
+- (note:) By the slide test the value-object answer is stronger. The team chose «Entity». Answer: "it's immutable; we gave it an id so a single booking can be referenced in the audit trail. By the strict slide test it could also be a value object."
+
+**"Doesn't GroupLedger grow forever?"** (aggregate rule 2, slide 67: design small aggregates)
+- There is one ledger per group, and a group is small: a trip has dozens or hundreds of expenses, not millions.
+- Balances are not recomputed from all entries on every request. The read model MemberBalance holds them (projection, CQRS, slide 78).
+- (note:) If it ever gets large, the usual event-sourcing technique is a snapshot of the balances (slide 72 introduces event sourcing; snapshots are background knowledge, not on the slides).
