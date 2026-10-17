@@ -19,7 +19,7 @@ Team original: `work/archive/firstdraft_ORIGINAL_team_import.drawio`.
   - in the Expense aggregate: `ExpenseId`, `ExpenseTitle`
   - in the GroupLedger aggregate: `EntryId`
   - in the SettlementPayment aggregate: `SettlementPaymentId`
-  - in the shared kernel: `Currency`, as part of Money
+  - in the shared types box: `Currency`, as part of Money
 
   Slides:
   - **DDD slide 66**: "Use Value Objects instead of primitive types", with a code example that uses `EmailAddress`, `PhoneNumber` and so on instead of String.
@@ -28,10 +28,11 @@ Team original: `work/archive/firstdraft_ORIGINAL_team_import.drawio`.
   - **slide 65**: what a value object is (no identity, immutable, equal by its values).
 - **Money without methods** (decided 17.10). The team version had add / subtract / negate / isPositive / isZero. Money now only has `amount: BigDecimal` and `currency: Currency`, as on DDD slide 64. The arithmetic belongs in the code, not in the domain diagram.
 - **`createGroup(GroupName name, Currency currency, UserId creator): GroupCreated`** (decided 17.10). Before, it had no parameters. The creator becomes the first admin (J2).
-- **References by ID: shown once, explained for all** (decided 17.10). The team version drew "references by ID" lines only from Expense (to GroupId and UserId), although 11 classes hold a GroupId or UserId (SettlementPayment, GroupLedger, Membership, LedgerEntry, …). We kept the two Expense lines as the example and added a note in the shared kernel: all other ID attributes work the same way (aggregate rule 3, DDD slide 67). Drawing every line would mean 13+ lines across the whole diagram.
+- **References by ID: shown once, explained for all** (decided 17.10). The team version drew "references by ID" lines only from Expense (to GroupId and UserId), although 11 classes hold a GroupId or UserId (SettlementPayment, GroupLedger, Membership, LedgerEntry, …). We kept the two Expense lines as the example and added a note in the shared types box: all other ID attributes work the same way (aggregate rule 3, DDD slide 67). Drawing every line would mean 13+ lines across the whole diagram.
 - **Every event now has a method that raises it** (decided 17.10). GroupLedger's `append…()` methods return `MemberBalanceStatusChanged, AllBalancesSettled`. Before, no method raised these two events, although GroupLedger "publishes" them. (Any booking can move a member's balance to or from 0.)
 - **`Group.updateBalanceStatus(UserId member, boolean hasZeroBalance)`** (decided 17.10). It is the method behind Group's subscription to `MemberBalanceStatusChanged`, and it sets `Membership.hasZeroBalance`. Before, Group subscribed but had no method to handle the event.
 - **`SettlementPayment.record(GroupId groupId, UserId fromDebtor, UserId toCreditor, Money amount, Money openDebt)`** (decided 17.10). Before, it was `record(Money openDebt)`, so debtor, creditor and amount were never passed in. This is the same fix as `createGroup()` and `Expense.record()`.
+- **"Shared kernel" renamed to "Shared types"** (decided 17.10). This is a class diagram, not a context map, so we don't use the context-map pattern name here.
 - Presentation only: a dashed box per aggregate, colours by type, `name: Type` notation, `List<…>` generics.
 
 ## To decide together

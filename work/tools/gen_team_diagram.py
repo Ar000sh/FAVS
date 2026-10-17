@@ -85,7 +85,7 @@ C = {
     "SettlementDomainEvents": ("events", ["SettlementPaymentRecorded", "SettlementPaymentConfirmed",
                                           "SettlementPaymentRejected", "DebtWaived",
                                           "MemberBalanceStatusChanged", "AllBalancesSettled"], []),
-    # Shared kernel
+    # Shared types
     "Money": ("vo", ["+ amount: BigDecimal", "+ currency: Currency"], []),
     "GroupId": ("vo", ["+ value: UUID"], []),
     # simple value objects instead of primitive types (DDD slide 66; GroupName listed on slide 68)
@@ -394,9 +394,9 @@ y3 = SDE[1] + 45
 edge("SettlementPayment", "SettlementDomainEvents", PUB, "publishes (Recorded, Confirmed, Rejected, DebtWaived)",
      exit=(0, (y3 - P[1]) / P[3]), entry=(1, (y3 - SDE[1]) / SDE[3]))
 
-# ================================================================== Shared kernel (right of Settlement)
+# ================================================================== Shared types (right of Settlement)
 K0 = (s_w + 120, S0[1])
-container("K", "1", K0[0], K0[1], 10, 10, "Shared kernel", *CTX["kernel"])
+container("K", "1", K0[0], K0[1], 10, 10, "Shared types · used by all contexts", *CTX["kernel"])
 mw_, mh_ = cls("Money", "K", 30, 60)
 cls("GroupId", "K", 30 + mw_ + 40, 60)
 gidw, gidh = size("GroupId")
