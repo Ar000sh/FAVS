@@ -28,6 +28,7 @@ Team original: `work/archive/firstdraft_ORIGINAL_team_import.drawio`.
   - **slide 65**: what a value object is (no identity, immutable, equal by its values).
 - **Money without methods** (decided 17.10). The team version had add / subtract / negate / isPositive / isZero. Money now only has `amount: BigDecimal` and `currency: Currency`, as on DDD slide 64. The arithmetic belongs in the code, not in the domain diagram.
 - **`createGroup(GroupName name, Currency currency, UserId creator): GroupCreated`** (decided 17.10). Before, it had no parameters. The creator becomes the first admin (J2).
+- **References by ID: shown once, explained for all** (decided 17.10). The team version drew "references by ID" lines only from Expense (to GroupId and UserId), although 11 classes hold a GroupId or UserId (SettlementPayment, GroupLedger, Membership, LedgerEntry, …). We kept the two Expense lines as the example and added a note in the shared kernel: all other ID attributes work the same way (aggregate rule 3, DDD slide 67). Drawing every line would mean 13+ lines across the whole diagram.
 - Presentation only: a dashed box per aggregate, colours by type, `name: Type` notation, `List<…>` generics.
 
 ## To decide together

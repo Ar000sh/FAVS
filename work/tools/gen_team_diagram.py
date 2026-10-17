@@ -394,7 +394,16 @@ cls("UserId", "K", 30 + mw_ + 40, 60 + gidh + 40)
 cw_, ch_ = size("Currency")
 cls("Currency", "K", int(30 + (mw_ - cw_) / 2), 60 + mh_ + ROWGAP)
 k_w = 30 + mw_ + 40 + max(gidw, size("UserId")[0]) + 30
-k_h = 60 + max(mh_ + ROWGAP + ch_, gidh + 40 + size("UserId")[1]) + 30
+k_content = 60 + max(mh_ + ROWGAP + ch_, gidh + 40 + size("UserId")[1])
+KNW = max(k_w - 60, 330); KNH = 115
+k_w = max(k_w, KNW + 60)
+note("noteIds", "K", 30, k_content + 40, KNW, KNH,
+     "<b>References by ID (aggregate rule 3, DDD slide 67)</b><br/>"
+     "Shown once, for Expense (the two dashed lines). All other GroupId / UserId attributes work the same way: "
+     "the class stores only the ID, never the object. Used by Group, Membership, Expense, ExpenseShare, "
+     "ExpenseRevision, GroupMembershipView, GroupLedger, LedgerEntry, MemberBalance, DirectedDebt and "
+     "SettlementPayment.")
+k_h = k_content + 40 + KNH + 30
 i = [k for k, c in enumerate(cells) if 'id="K"' in c][0]
 cells[i] = cells[i].replace('width="10" height="10"', f'width="{k_w}" height="{k_h}"'); box["K"] = (K0[0], K0[1], k_w, k_h)
 
