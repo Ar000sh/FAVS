@@ -1,11 +1,11 @@
-"""Generate work/ShareWise_Team_Diagram.drawio: the team class diagram (17.10.26) as clean draw.io UML.
+"""Generate work/ShareWise_Domain_Model.drawio: the team class diagram (17.10.26) as clean draw.io UML.
 
 Every class is ONE draw.io cell with an HTML label (stereotype, name, attributes, methods), so draw.io
 never re-lays out rows. Edit the model below and run:  python3 work/tools/gen_team_diagram.py
 """
 import html, os
 
-OUT = os.path.join(os.path.dirname(__file__), "..", "ShareWise_Team_Diagram.drawio")
+OUT = os.path.join(os.path.dirname(__file__), "..", "ShareWise_Domain_Model.drawio")
 
 # ----------------------------------------------------------------------------------------------- model
 # kind: root | entity | vo | enum | readmodel | events
