@@ -9,6 +9,11 @@ Team original: `work/archive/firstdraft_ORIGINAL_team_import.drawio`.
 - `InvitationDeclined` added to GroupDomainEvents (it was returned by `decline()` but missing from the list).
 - `DebtForgiven` renamed to **`DebtWaived`**, to match `waive()`, `WAIVED` and `DEBT_WAIVED`.
 - Settlement arrows now name their events, e.g. "publishes (MemberBalanceStatusChanged, AllBalancesSettled)". There is still one SettlementDomainEvents box.
+- **Invitations go through the root Group** (decided 17.10). Rule 1 on DDD slide 67: changes only through the root, and outside code may not call inner entities directly.
+  - New on Group: `acceptInvitation(InvitationId, UserId): MemberJoined` checks that the group is OPEN and the user is not yet a member, calls `invitation.accept()`, adds the Membership and publishes MemberJoined.
+  - New on Group: `declineInvitation(InvitationId): InvitationDeclined`.
+  - Invitation keeps `accept()` / `decline()`, but they now only change its status and no longer return events.
+  - Before, `Invitation.accept()` returned `MemberJoined`, but it could not create the Membership, and Group had no method for joining.
 - Presentation only: a dashed box per aggregate, colours by type, `name: Type` notation, `List<…>` generics.
 
 ## To decide together
@@ -17,12 +22,9 @@ Team original: `work/archive/firstdraft_ORIGINAL_team_import.drawio`.
    - If **no**, an admin archives with `archiveGroup()`, which checks that every member has `hasZeroBalance`. Then Group no longer needs to subscribe to `AllBalancesSettled`.
    - The diagram currently keeps the team version: Group subscribes to AllBalancesSettled.
 2. **`correct()` stays as the team had it** (amount + shares). Our journey J5 in `ShareWise_Requirements.md` also allows correcting the payer, so either we remove "payer" from J5 or we widen `correct()`. The slides only show `correct(newAmount)` (DDD slide 64).
-3. **Invitation and rule 1 ("changes only through the root").** `Invitation.accept()` returns `MemberJoined`, but an inner entity can't add a member to its Group, and Group has no `join()`. Two options:
-   - **A)** Invitation becomes its own aggregate: `accept()` → `InvitationAccepted` → `Group.join()` → `MemberJoined`.
-   - **B)** accept and decline move onto Group: `Group.acceptInvitation(...)` / `Group.declineInvitation(...)`.
-4. **`waive()` / `DebtWaived` is a new feature.** It isn't in the requirements. Keep it (then add it to the requirements and define what waiving means) or drop it for the MVP?
-5. **LedgerEntry: «Entity» or value object?** An entry never changes once written. Be ready for the question "doesn't GroupLedger grow forever?" (aggregate rule 2: small aggregates).
-6. **Small items:**
+3. **`waive()` / `DebtWaived` is a new feature.** It isn't in the requirements. Keep it (then add it to the requirements and define what waiving means) or drop it for the MVP?
+4. **LedgerEntry: «Entity» or value object?** An entry never changes once written. Be ready for the question "doesn't GroupLedger grow forever?" (aggregate rule 2: small aggregates).
+5. **Small items:**
    - `createGroup()` has no parameters (name, currency, creator?).
    - Expense has no `date`.
    - These types are used but never defined: ExpenseTitle, GroupName, Currency, Email, the IDs.

@@ -19,11 +19,13 @@ C = {
                "+ leaveGroup(UserId member): MemberLeft",
                "+ closeForSettlement(UserId actingAdmin): GroupClosedForSettlement",
                "+ reopenGroup(UserId actingAdmin): GroupReopened",
-               "+ archiveGroup(UserId actingAdmin): GroupArchived"]),
+               "+ archiveGroup(UserId actingAdmin): GroupArchived",
+               "+ acceptInvitation(InvitationId, UserId): MemberJoined",
+               "+ declineInvitation(InvitationId): InvitationDeclined"]),
     "Membership": ("entity", ["+ userId: UserId", "+ role: GroupRole", "+ status: MembershipStatus",
                               "+ hasZeroBalance: boolean", "+ joinedAt: Instant"], []),
     "Invitation": ("entity", ["+ id: InvitationId", "+ email: Email", "+ status: InvitationStatus", "+ expiresAt: Instant"],
-                   ["+ accept(UserId user): MemberJoined", "+ decline(): InvitationDeclined"]),
+                   ["+ accept(UserId user)", "+ decline()"]),
     "GroupStatus": ("enum", ["OPEN", "CLOSED_FOR_SETTLEMENT", "ARCHIVED"], []),
     "GroupRole": ("enum", ["ADMIN", "MEMBER"], []),
     "MembershipStatus": ("enum", ["ACTIVE", "FORMER_MEMBER"], []),
@@ -200,9 +202,18 @@ ag_w = max(20 + gw, 20 + mw + GAP + sw + GAP + iw) + 20
 ag_h = r3 + max(msh, size("InvitationStatus")[1]) + 30
 cells[[i for i, c in enumerate(cells) if 'id="AG"' in c][0]] = cells[[i for i, c in enumerate(cells) if 'id="AG"' in c][0]].replace('width="10" height="10"', f'width="{ag_w}" height="{ag_h}"')
 box["AG"] = (box["AG"][0], box["AG"][1], ag_w, ag_h)
-cls("GroupDomainEvents", "G", 20 + ag_w + 60, 100)
-g_w = 20 + ag_w + 60 + size("GroupDomainEvents")[0] + 30
-g_h = 50 + ag_h + 30
+gdw, gdh = cls("GroupDomainEvents", "G", 20 + ag_w + 60, 100)
+# note on the 17.10 decision, below the events box
+GNX, GNY, GNW, GNH = 20 + ag_w + 60, 100 + gdh + 50, 300, 175
+note("noteInvite", "G", GNX, GNY, GNW, GNH,
+     "<b>Decision 17.10: invitations go through the root</b><br/>"
+     "What: Group.acceptInvitation() checks that the group is OPEN and the user is not yet a member, calls "
+     "invitation.accept() (PENDING, not expired), adds the Membership and publishes MemberJoined. "
+     "declineInvitation() works the same way. Invitation keeps accept() / decline(), but they only change its status.<br/>"
+     "Why: aggregate rule 1 (DDD slide 67): rules that involve several parts are protected via the root. "
+     "Events are published by the aggregate (slide 71), not by an inner entity.")
+g_w = max(20 + ag_w + 60 + gdw, GNX + GNW) + 30
+g_h = max(50 + ag_h, GNY + GNH) + 30
 cells[0] = cells[0].replace('width="10" height="10"', f'width="{g_w}" height="{g_h}"')
 box["G"] = (G0[0], G0[1], g_w, g_h)
 
