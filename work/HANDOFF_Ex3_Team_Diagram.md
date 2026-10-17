@@ -1,0 +1,58 @@
+# Handoff: Ex3 team class diagram (state 17.10.26, evening)
+
+Context for a new Claude session. Read this first, then `CLAUDE.md`.
+
+## Where we are
+- **P1 presentation is Tue 20.10.26. Ex3 is due Mon 19.10.**
+- The team agreed on a class diagram today: **`work/firstdraft.drawio`**. This is now the main Ex3 artifact. Edit it with the user and keep it as the source.
+- Branch: `claude/intelligent-cray-lau7zf` (latest commit `082c807`). `master` still only has `first commit`.
+- The user views the diagram in VS Code with the "Draw.io Integration" extension, which reloads when the file changes. So edit the XML file directly and the user sees it live.
+
+## Team decisions visible in the diagram (these override older files)
+| Topic | Team decision |
+|---|---|
+| Who is a person inside a group? | `UserId` everywhere (no separate `MemberId`). Consequence: placeholder members (J17) not possible. |
+| Expense split | `ExpenseShare` is a **value object** (resolves DDD slide 64 vs 68 conflict). |
+| Settlement model | **`GroupLedger`** aggregate with **append-only `LedgerEntry`** (corrections/removals = reversal entries). `MemberBalance` and `SettlementPlan` are **read models** (CQRS, slide 78; ES slide 72). |
+| Payments | `SettlementPayment` is its own aggregate: PENDING → CONFIRMED / REJECTED / WAIVED. |
+| Leave only at balance 0 | `Membership.hasZeroBalance` = local copy in Group, fed by `MemberBalanceStatusChanged` from Settlement. |
+| Invitation | Currently an «Entity» **inside** the Group aggregate (open point, see below). |
+
+## Already fixed in `firstdraft.drawio` (by the previous session)
+1. `InvitationStatus` moved into the GroupContext box, under `Invitation`, one 1–1 composition, values in lifecycle order. It was a copy of `MembershipStatus` (wrong internal mermaidId); fixed.
+2. Settlement context: dashed **aggregate boundary boxes** (containers) – `«Aggregate» GroupLedger` (GroupLedger + LedgerEntry + LedgerEntryType) and `«Aggregate» SettlementPayment` (SettlementPayment + PaymentStatus). Read models and events outside. Edges routed through gaps.
+3. Events split per aggregate: `SettlementPaymentEvents` (Recorded, Confirmed, Rejected, DebtWaived) and `GroupLedgerEvents` (MemberBalanceStatusChanged, AllBalancesSettled). One edge per relationship.
+4. `DebtForgiven` renamed to **`DebtWaived`** everywhere (incl. the embedded Mermaid source).
+
+## Open points (from the review, ranked) – discuss with the user one at a time
+**Must fix before Tuesday**
+1. **Expense can't check group rules.** Expense only knows `groupId`; nothing in Expense subscribes to Group events. So R2/R3 (payer/participants are members), R10 (late joiners), R5/L2/L3 (no expenses when closed) and R6 (recorder/payer/admin may edit) have no home. Fix: a small «Snapshot» class in ExpenseContext (e.g. `GroupRoster`: open?, active members, admins) fed by GroupDomainEvents and passed into `record/correct/remove`, **or** a note "application service checks Group's API first".
+2. **Invitation / rule 1 (changes only via the root).** `Invitation.accept()` returns `MemberJoined`, but an inner entity can't add a Membership to its Group. Options: **A)** Invitation becomes its own aggregate (own box like SettlementPayment, holds `groupId`; `accept()` → `InvitationAccepted` → `Group.join()` → `MemberJoined`) – recommended; **B)** keep inside, move to `Group.acceptInvitation(invitationId, userId)` / `Group.declineInvitation(...)`. **This was the question pending when the session ended.** Also: `InvitationDeclined` is missing from GroupDomainEvents.
+3. **Auto-archive mid-trip.** `AllBalancesSettled` can fire in an OPEN group. Add note/rule: Group archives on it only while `CLOSED_FOR_SETTLEMENT` (L5).
+
+**Should fix**
+4. `waive()` / `DebtWaived` / `WAIVED` is a **new feature** not in `ShareWise_Requirements.md` → add it there or drop for MVP. Waiving isn't a payment; fits better as a GroupLedger command.
+5. `LedgerEntry` is «Entity» but never changes → by slide 65 it's a value object / immutable record. Prepare answer to "doesn't GroupLedger grow forever?" (rule 2: small aggregates) → balances are projected, snapshots possible.
+6. `Expense.correct(Money newAmount, List newShares, …)` too narrow: J5 also changes payer and split strategy. Widen, or decide payer can't be corrected.
+7. `ExpenseShare` lost `percentage` in the draw.io box (it's in the Mermaid source); needed for percentage split (R4).
+
+**Diagram tidy-up**
+- `createGroup()` has no params → `(name, currency, creator) → GroupCreated, MemberJoined`.
+- Types used but never defined: ExpenseTitle, Percentage, Currency, GroupName, Email, ID types (one "Typed IDs" box in SharedKernel would do).
+- Expense has no `date`.
+
+## Still missing for P1 / Ex3
+- **Ex3.4 hexagonal architecture**: ports & adapters for the core contexts + package layout of the modular monolith (nothing exists yet).
+- Bring older files in line with the team diagram or mark them superseded: `work/Ex3_Tactical_Model.html`, `work/Ex3_Building_Blocks_Board.html`, `work/ShareWise_Class_Diagram.drawio` (+ `.png`, `work/tools/gen_class_diagram.py`). They use BalanceSheet, MemberId and Invitation-as-aggregate (our earlier proposals D1–D13, findings F1–F9).
+- Copy the team decisions into **`work/ShareWise_Requirements.md`** (single source of truth) and update the Ex3 row in `CLAUDE.md`.
+
+## How to edit `firstdraft.drawio` safely
+- **Never use draw.io "Edit → Mermaid"**: the file embeds the original Mermaid source (`mermaidData` on the first `UserObject`); regenerating from it drops all manual fixes.
+- Structure: each class is a `UserObject` (id `hCQeS1Rk4ec1oHEpOPA0-<n>`, attribute `label`) wrapping an `mxCell` with a `swimlane` + `stackLayout` style. Rows are child `mxCell`s (`text` style, height 21, first row at y=36 or y=78 after the stereotype row at y=12; a `line` cell is the compartment divider). When adding/removing rows, update the box height.
+- Containers: `GroupContext` = `…-171`, `ExpenseContext` = `…-21`, `SettlementContext` = `…-80`, `SharedKernel` = `…-2`. Aggregate boxes: `agg-ledger`, `agg-payment`. Ledger events box: `ev-ledger`. Child coordinates are relative to their parent.
+- Edges with `parent="1"` use absolute coordinates for waypoints; edges inside a container use coordinates relative to it.
+- Validate after each change: `python3 -c "import xml.dom.minidom as m; m.parse('work/firstdraft.drawio')"`.
+- Commit + push after each agreed step (only one session should edit the file at a time).
+
+## Conventions (from CLAUDE.md)
+"(slide N)" = page of the 02.DDD deck. Mark our own choices as 🟢 Decision. Never present inference as lecture content. English. Verify calculations with a script.
