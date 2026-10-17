@@ -29,6 +29,9 @@ Team original: `work/archive/firstdraft_ORIGINAL_team_import.drawio`.
 - **Money without methods** (decided 17.10). The team version had add / subtract / negate / isPositive / isZero. Money now only has `amount: BigDecimal` and `currency: Currency`, as on DDD slide 64. The arithmetic belongs in the code, not in the domain diagram.
 - **`createGroup(GroupName name, Currency currency, UserId creator): GroupCreated`** (decided 17.10). Before, it had no parameters. The creator becomes the first admin (J2).
 - **References by ID: shown once, explained for all** (decided 17.10). The team version drew "references by ID" lines only from Expense (to GroupId and UserId), although 11 classes hold a GroupId or UserId (SettlementPayment, GroupLedger, Membership, LedgerEntry, …). We kept the two Expense lines as the example and added a note in the shared kernel: all other ID attributes work the same way (aggregate rule 3, DDD slide 67). Drawing every line would mean 13+ lines across the whole diagram.
+- **Every event now has a method that raises it** (decided 17.10). GroupLedger's `append…()` methods return `MemberBalanceStatusChanged, AllBalancesSettled`. Before, no method raised these two events, although GroupLedger "publishes" them. (Any booking can move a member's balance to or from 0.)
+- **`Group.updateBalanceStatus(UserId member, boolean hasZeroBalance)`** (decided 17.10). It is the method behind Group's subscription to `MemberBalanceStatusChanged`, and it sets `Membership.hasZeroBalance`. Before, Group subscribed but had no method to handle the event.
+- **`SettlementPayment.record(GroupId groupId, UserId fromDebtor, UserId toCreditor, Money amount, Money openDebt)`** (decided 17.10). Before, it was `record(Money openDebt)`, so debtor, creditor and amount were never passed in. This is the same fix as `createGroup()` and `Expense.record()`.
 - Presentation only: a dashed box per aggregate, colours by type, `name: Type` notation, `List<…>` generics.
 
 ## To decide together
@@ -45,6 +48,13 @@ Team original: `work/archive/firstdraft_ORIGINAL_team_import.drawio`.
      - **(a)** Drop it for the MVP: remove `waive()`, `WAIVED`, `DebtWaived`, `appendDebtWaiver()` and `DEBT_WAIVED`.
      - **(b)** Keep it as a ledger command, e.g. `GroupLedger.waiveDebt(debtor, creditor, amount): DebtWaived`, plus a new rule in the requirements.
      - **(c)** Keep it as is and expect a question about it in P1.
+
+4. **Parts as attributes: list them or not?** At the moment some parts appear as an attribute **and** a ◆ line (Expense `splitStrategy`, `status`; SettlementPlan `simplifiedDebts: List<DirectedDebt>`), others **only** as a ◆ line (Group's members and invitations, Expense's shares and history, GroupLedger's entries). We should make it consistent. Proposal: add the missing lists, since Ex4 needs them anyway:
+   - Group: `members: List<Membership>`, `invitations: List<Invitation>`
+   - Expense: `shares: List<ExpenseShare>`, `history: List<ExpenseRevision>`
+   - GroupLedger: `entries: List<LedgerEntry>`
+
+   The alternative is to remove `simplifiedDebts`, `splitStrategy` and `status` and rely on the lines only (UML allows both).
 
 ## Decided, no action
 - **No `date` on Expense.** It isn't on the slides: slide 64 gives Expense exactly id, groupId, paidBy, amount, splitStrategy, status.
