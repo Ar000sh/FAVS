@@ -182,6 +182,45 @@ def comp(part, whole, label="", mult=("1", "1")):
     edge(part, whole, COMP, label, exit=(0.5, 0), entry=(fx, 1), mult=mult)
 
 
+def comp_row(parts, whole, labels=None, mults=None):
+    """Compositions from a row of parts up into one whole: every line gets its own entry point and its own
+    horizontal level, so lines that have to move sideways never overlap or cross."""
+    wx, wy, ww, wh = box[whole]
+    lo, hi = wx + 0.06 * ww, wx + 0.94 * ww
+    centers = [box[p][0] + box[p][2] / 2 for p in parts]
+    # entry x: straight above the part where possible, otherwise packed 30px apart from the right end
+    entries, used = [], hi + 30
+    for cx in reversed(centers):
+        ex = min(cx, hi, used - 30)
+        entries.insert(0, max(lo, ex)); used = entries[0]
+    top = min(box[p][1] for p in parts)
+    k = 0
+    for i, p in enumerate(parts):
+        cx, ex = centers[i], entries[i]
+        lbl = (labels or {}).get(p, ""); m = (mults or {}).get(p, ("1", "1"))
+        if abs(cx - ex) < 2:
+            edge(p, whole, COMP, lbl, exit=(0.5, 0), entry=((ex - wx) / ww, 1), mult=m)
+        else:
+            k += 1
+    # parts that need a sideways step: the further right, the higher the step (no crossings)
+    side_parts = [i for i in range(len(parts)) if abs(centers[i] - entries[i]) >= 2]
+    n = len(side_parts)
+    for rank, i in enumerate(side_parts):
+        p = parts[i]; cx, ex = centers[i], entries[i]
+        gap_top, gap_bot = wy + wh + 14, top - 14
+        y = gap_bot - (gap_bot - gap_top) * (rank + 1) / (n + 1)
+        lbl = (labels or {}).get(p, ""); m = (mults or {}).get(p, ("1", "1"))
+        edge(p, whole, COMP, lbl, exit=(0.5, 0), entry=((ex - wx) / ww, 1), points=[(cx, y), (ex, y)], mult=m)
+
+
+def side(part, whole, fy=None):
+    """Composition from a part placed to the right of its whole: horizontal line into the whole's right side."""
+    px, py, pw, ph = box[part]; wx, wy, ww, wh = box[whole]
+    y = py + ph / 2
+    fy = fy if fy is not None else min(0.95, max(0.05, (y - wy) / wh))
+    edge(part, whole, COMP, "", exit=(0, 0.5), entry=(1, fy), mult=("1", "1"))
+
+
 def center_under(parent_name, w):
     x, _, pw, _ = box[parent_name]
     return x + (pw - w) / 2
@@ -205,12 +244,12 @@ cls("MembershipStatus", "AG", 20, r3)
 cls("GroupRole", "AG", 20 + msw + 30, r3)
 isw, _ = size("InvitationStatus")
 cls("InvitationStatus", "AG", int(center_under("Invitation", isw) - box["AG"][0]), r3)
-r4 = r3 + max(msh, size("InvitationStatus")[1]) + 60
-x = 20
-for nm in ("GroupName", "Email", "InvitationId"):
-    w, _ = cls(nm, "AG", x, r4); x += w + 40
-ag_w = max(20 + gw, 20 + mw + GAP + sw + GAP + iw, x - 40) + 20
-ag_h = r4 + max(size(nm)[1] for nm in ("GroupName", "Email", "InvitationId")) + 30
+gnw, gnh = cls("GroupName", "AG", 20 + gw + 80, 50 + gh - gnh_ if (gnh_ := size("GroupName")[1]) else 0)
+inv_x = 20 + mw + GAP + sw + GAP
+emw, emh = cls("Email", "AG", inv_x + iw + 60, r2)
+idw, idh = cls("InvitationId", "AG", inv_x + iw + 60, r2 + emh + 30)
+ag_w = max(20 + gw + 80 + gnw, inv_x + iw + 60 + max(emw, idw)) + 20
+ag_h = r3 + max(msh, size("InvitationStatus")[1]) + 30
 cells[[i for i, c in enumerate(cells) if 'id="AG"' in c][0]] = cells[[i for i, c in enumerate(cells) if 'id="AG"' in c][0]].replace('width="10" height="10"', f'width="{ag_w}" height="{ag_h}"')
 box["AG"] = (box["AG"][0], box["AG"][1], ag_w, ag_h)
 gdw, gdh = cls("GroupDomainEvents", "G", 20 + ag_w + 60, 100)
@@ -234,6 +273,9 @@ comp("Invitation", "Group", "tracks", ("0..*", "1"))
 comp("MembershipStatus", "Membership")
 comp("GroupRole", "Membership")
 comp("InvitationStatus", "Invitation")
+side("GroupName", "Group")
+side("Email", "Invitation", 0.35)
+side("InvitationId", "Invitation", 0.75)
 gx, gy, gw_, gh_ = box["Group"]; ex_, ey_, ew_, eh_ = box["GroupDomainEvents"]
 edge("Group", "GroupDomainEvents", PUB, "publishes", exit=(1, (ey_ + 40 - gy) / gh_), entry=(0, 40 / eh_))
 
@@ -244,15 +286,11 @@ container("AE", "E", 20, 50, 10, 10, "«Aggregate» Expense · 1 transaction", *
 xw, xh = cls("Expense", "AE", 20, 50)
 r2 = 50 + xh + ROWGAP
 x = 20
-for nm in ("ExpenseShare", "ExpenseRevision", "SplitStrategy", "ExpenseStatus"):
+ROW2 = ("ExpenseShare", "ExpenseRevision", "SplitStrategy", "ExpenseStatus", "ExpenseId", "ExpenseTitle")
+for nm in ROW2:
     w, _ = cls(nm, "AE", x, r2); x += w + 40
-row2_w = x - 40
-r3 = r2 + max(size(nm)[1] for nm in ("ExpenseShare", "ExpenseRevision", "SplitStrategy", "ExpenseStatus")) + 60
-x = 20
-for nm in ("ExpenseId", "ExpenseTitle"):
-    w, _ = cls(nm, "AE", x, r3); x += w + 40
-ae_w = max(20 + xw, row2_w, x - 40) + 20
-ae_h = r3 + max(size(nm)[1] for nm in ("ExpenseId", "ExpenseTitle")) + 30
+ae_w = max(20 + xw, x - 40) + 20
+ae_h = r2 + max(size(nm)[1] for nm in ROW2) + 30
 i = [k for k, c in enumerate(cells) if 'id="AE"' in c][0]
 cells[i] = cells[i].replace('width="10" height="10"', f'width="{ae_w}" height="{ae_h}"'); box["AE"] = (box["AE"][0], box["AE"][1], ae_w, ae_h)
 RC = 20 + ae_w + 60                                  # right column of the Expense context
@@ -273,10 +311,8 @@ e_h = max(50 + ae_h, NY + NH) + 30
 i = [k for k, c in enumerate(cells) if 'id="E"' in c][0]
 cells[i] = cells[i].replace('width="10" height="10"', f'width="{e_w}" height="{e_h}"'); box["E"] = (E0[0], E0[1], e_w, e_h)
 
-comp("ExpenseShare", "Expense", "splits into", ("1..*", "1"))
-comp("ExpenseRevision", "Expense", "maintains history", ("0..*", "1"))
-comp("SplitStrategy", "Expense")
-comp("ExpenseStatus", "Expense")
+comp_row(list(ROW2), "Expense", labels={"ExpenseShare": "splits into", "ExpenseRevision": "maintains history"},
+         mults={"ExpenseShare": ("1..*", "1"), "ExpenseRevision": ("0..*", "1")})
 xx, xy, xw_, xh_ = box["Expense"]; ex_, ey_, ew_, eh_ = box["ExpenseDomainEvents"]
 y_pub = (max(xy, ey_) + min(xy + xh_, ey_ + eh_)) / 2           # level where Expense and its events box overlap
 edge("Expense", "ExpenseDomainEvents", PUB, "publishes", exit=(1, (y_pub - xy) / xh_), entry=(0, (y_pub - ey_) / eh_))
@@ -295,12 +331,11 @@ container("AL", "S", 20, 50, 10, 10, "«Aggregate» GroupLedger · 1 transaction
 lw, lh = cls("GroupLedger", "AL", 20, 50)
 lew, leh = size("LedgerEntry")
 cls("LedgerEntry", "AL", int(20 + (lw - lew) / 2), 50 + lh + ROWGAP)
-ltw, lth = size("LedgerEntryType")
-cls("LedgerEntryType", "AL", int(20 + (lw - ltw) / 2), 50 + lh + ROWGAP + leh + ROWGAP)
-eiw, eih = size("EntryId")
-y_ei = 50 + lh + ROWGAP + leh + ROWGAP + lth + 60
-cls("EntryId", "AL", int(20 + (lw - eiw) / 2), y_ei)
-al_w, al_h = lw + 40, y_ei + eih + 30
+ltw, lth = size("LedgerEntryType"); eiw, eih = size("EntryId")
+r3l = 50 + lh + ROWGAP + leh + ROWGAP
+cls("LedgerEntryType", "AL", 20, r3l)
+cls("EntryId", "AL", 20 + ltw + 40, r3l)
+al_w, al_h = lw + 40, r3l + max(lth, eih) + 30
 i = [k for k, c in enumerate(cells) if 'id="AL"' in c][0]
 cells[i] = cells[i].replace('width="10" height="10"', f'width="{al_w}" height="{al_h}"'); box["AL"] = (box["AL"][0], box["AL"][1], al_w, al_h)
 
@@ -316,12 +351,11 @@ mid_w = max(sde_w, mbw, spw, ddw)
 AP_X = MID + mid_w + 360
 container("AP", "S", AP_X, 50, 10, 10, "«Aggregate» SettlementPayment · 1 transaction", *AGG, dashed=True)
 pw, ph = cls("SettlementPayment", "AP", 20, 50)
-psw, psh = size("PaymentStatus")
-cls("PaymentStatus", "AP", int(20 + (pw - psw) / 2), 50 + ph + ROWGAP)
-spiw, spih = size("SettlementPaymentId")
-y_spi = 50 + ph + ROWGAP + psh + 60
-cls("SettlementPaymentId", "AP", int(20 + (pw - spiw) / 2), y_spi)
-ap_w, ap_h = pw + 40, y_spi + spih + 30
+psw, psh = size("PaymentStatus"); spiw, spih = size("SettlementPaymentId")
+row_w = psw + 60 + spiw
+cls("PaymentStatus", "AP", int(20 + (pw - row_w) / 2), 50 + ph + ROWGAP)
+cls("SettlementPaymentId", "AP", int(20 + (pw - row_w) / 2) + psw + 60, 50 + ph + ROWGAP)
+ap_w, ap_h = pw + 40, 50 + ph + ROWGAP + max(psh, spih) + 30
 i = [k for k, c in enumerate(cells) if 'id="AP"' in c][0]
 cells[i] = cells[i].replace('width="10" height="10"', f'width="{ap_w}" height="{ap_h}"'); box["AP"] = (box["AP"][0], box["AP"][1], ap_w, ap_h)
 s_w = AP_X + ap_w + 30
@@ -331,8 +365,10 @@ cells[i] = cells[i].replace('width="10" height="10"', f'width="{s_w}" height="{s
 
 comp("LedgerEntry", "GroupLedger", "append-only entries", ("0..*", "1"))
 comp("LedgerEntryType", "LedgerEntry")
+comp("EntryId", "LedgerEntry")
 comp("DirectedDebt", "SettlementPlan", "", ("0..*", "1"))
 comp("PaymentStatus", "SettlementPayment")
+comp("SettlementPaymentId", "SettlementPayment")
 L = box["GroupLedger"]; SDE = box["SettlementDomainEvents"]; MB = box["MemberBalance"]; SP = box["SettlementPlan"]
 P = box["SettlementPayment"]; Sx, Sy = S0
 y1, y2 = SDE[1] + 45, SDE[1] + SDE[3] - 30   # two separate horizontal lanes between GroupLedger and the events box

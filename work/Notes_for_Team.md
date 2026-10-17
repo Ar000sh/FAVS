@@ -14,7 +14,7 @@ Team original: `work/archive/firstdraft_ORIGINAL_team_import.drawio`.
   - New on Group: `declineInvitation(InvitationId): InvitationDeclined`.
   - Invitation keeps `accept()` / `decline()`, but they now only change its status and no longer return events.
   - Before, `Invitation.accept()` returned `MemberJoined`, but it could not create the Membership, and Group had no method for joining.
-- **Value objects for all types the model uses** (decided 17.10). Before, the model used these types but never defined them. Each is now a small «Value Object» box:
+- **Value objects for all types the model uses** (decided 17.10). Before, the model used these types but never defined them. Each is now a small «Value Object» box, connected with ◆ to the class that uses it (GroupName → Group, Email and InvitationId → Invitation, ExpenseId and ExpenseTitle → Expense, EntryId → LedgerEntry, SettlementPaymentId → SettlementPayment, Currency → Money):
   - in the Group aggregate: `GroupName`, `Email`, `InvitationId`
   - in the Expense aggregate: `ExpenseId`, `ExpenseTitle`
   - in the GroupLedger aggregate: `EntryId`
