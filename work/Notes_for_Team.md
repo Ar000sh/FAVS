@@ -30,13 +30,13 @@ Team original: `work/archive/firstdraft_ORIGINAL_team_import.drawio`.
      - **(a)** Drop it for the MVP: remove `waive()`, `WAIVED`, `DebtWaived`, `appendDebtWaiver()` and `DEBT_WAIVED`.
      - **(b)** Keep it as a ledger command, e.g. `GroupLedger.waiveDebt(debtor, creditor, amount): DebtWaived`, plus a new rule in the requirements.
      - **(c)** Keep it as is and expect a question about it in P1.
-4. **LedgerEntry: «Entity» or value object?** An entry never changes once written. Be ready for the question "doesn't GroupLedger grow forever?" (aggregate rule 2: small aggregates).
-5. **Small items:**
+4. **Small items:**
    - `createGroup()` has no parameters (name, currency, creator?).
    - Expense has no `date`.
    - These types are used but never defined: ExpenseTitle, GroupName, Currency, Email, the IDs.
 
 ## Decided, no action
+- **LedgerEntry stays an «Entity».** It is immutable, but each booking is its own fact that we need to refer to (audit, reversals). Slide 66 says entities are *often* mutable, not always.
 - **No currency check.** One currency per group is our own simplification. The slides only have Money with Currency (slide 64).
 
 ## Still to do for P1 (20.10)
